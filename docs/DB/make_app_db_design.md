@@ -76,7 +76,6 @@
 | `result_token`      | VARCHAR2(36) | NOT NULL | UNIQUE                  | 결과 공유 URL용 토큰. 초대와 분리                     |
 | `status`            | VARCHAR2(20) | NOT NULL |                         | 모임 상태: `DRAFT` / `OPEN` / `CONFIRMED` / `EXPIRED` |
 | `confirmed_slot_id` | NUMBER(19,0) | NULL     | FK → CANDIDATE_SLOTS.id | 리더가 최종 확정한 슬롯. 확정 전엔 NULL               |
-| `expires_at`        | TIMESTAMP    | NULL     |                         | 모임 만료 시각                                        |
 | `created_at`        | TIMESTAMP    | NOT NULL |                         | 모임 생성 시각                                        |
 | `updated_at`        | TIMESTAMP    | NOT NULL |                         | 마지막 수정 시각                                      |
 
