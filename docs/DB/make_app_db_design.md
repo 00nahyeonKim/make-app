@@ -37,7 +37,7 @@
 
 ## 3. ERD
 
-![ERD](ERD_img/make_app_erd_v2.jpg)
+![ERD](ERD_img/make_app_erd_v3.jpg)
 
 ---
 
