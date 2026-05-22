@@ -8,7 +8,7 @@
  
  
 # ============================================
-# OS - Windows
+# OS - Windows / macOS
 # ============================================
 Thumbs.db
 Thumbs.db:encryptable
@@ -19,66 +19,128 @@ $RECYCLE.BIN/
  
 # macOS (팀원 환경 대비)
 .DS_Store
- 
- 
+
+
 # ============================================
-# IDE - VS Code
+# Logs
 # ============================================
-.vscode/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# ============================================
+# Editor / IDE - VS Code
+# ============================================
+.vscode/*
+!.vscode/extensions.json
+**/.vscode/*
+!**/.vscode/extensions.json
+
 *.code-workspace
- 
- 
+
+
+# ============================================
+# Editor / IDE - IntelliJ IDEA
+# ============================================
+.idea/
+**/.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+
+# ============================================
+# Editor / IDE - STS / Eclipse
+# ============================================
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+
+# ============================================
+# Editor / IDE - NetBeans
+# ============================================
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+
+# ============================================
+# Editor misc
+# ============================================
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+
 # ============================================
 # Java
 # ============================================
-# 컴파일된 클래스 파일
 *.class
- 
-# 로그 파일
-*.log
- 
-# BlueJ 파일
 *.ctxt
- 
+
 # Mobile Tools for Java
 .mtj.tmp/
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
  
-# 아카이브 파일 (실수로 커밋 방지)
+
+# ============================================
+# Archive / Build artifacts
+# ============================================
+*.jar
 *.war
 *.nar
 *.ear
 *.zip
 *.tar.gz
 *.rar
- 
-# JVM 크래시 로그
-hs_err_pid*
-replay_pid*
- 
- 
+
+# Gradle Wrapper jar는 반드시 커밋되어야 함
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+
 # ============================================
 # Spring Boot / Gradle
 # ============================================
-build/
-.gradle/
-bin/
-logs/
 HELP.md
- 
- 
+.gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+
 # ============================================
-# Node.js / React
+# Node.js / React / Vite
 # ============================================
 node_modules/
 dist/
+dist-ssr/
 .vite/
 coverage/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
- 
- 
+
+
 # ============================================
 # Docker
 # ============================================
