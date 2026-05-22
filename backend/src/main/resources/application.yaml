@@ -3,7 +3,7 @@ spring:
     name: make-app
 
   datasource:
-    url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+    url: jdbc:oracle:thin:@localhost:1521/XE
     username: ${DB_USER:makeapp}
     password: ${DB_PASSWORD:dev_password}
     driver-class-name: oracle.jdbc.OracleDriver
