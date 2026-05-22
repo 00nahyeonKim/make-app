@@ -1,0 +1,3 @@
+-- db/init/02-tablespace.sql (필요시)
+ALTER SESSION SET CONTAINER = XEPDB1;
+CREATE TABLESPACE makeapp_data DATAFILE 'makeapp.dbf' SIZE 100M AUTOEXTEND ON;

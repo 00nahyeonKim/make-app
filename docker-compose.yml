@@ -1,0 +1,22 @@
+services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: makeapp-oracle
+    ports:
+      - "1521:1521"
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_SYS_PASSWORD}   # SYS 계정 비번
+      APP_USER: ${DB_USER}                       # 앱용 계정 자동 생성
+      APP_USER_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - oracle-data:/opt/oracle/oradata          # 데이터 영속성
+      - ./db/init:/container-entrypoint-initdb.d # 초기 SQL
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s                          # XE는 첫 부팅이 느림
+
+volumes:
+  oracle-data:

@@ -1,24 +1,85 @@
-# Compiled class file
+# ============================================
+# 환경변수 / 비밀 정보 (⭐ 가장 중요)
+# ============================================
+.env
+.env.local
+.env.*.local
+!.env.example
+ 
+ 
+# ============================================
+# OS - Windows
+# ============================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+ 
+# macOS (팀원 환경 대비)
+.DS_Store
+ 
+ 
+# ============================================
+# IDE - VS Code
+# ============================================
+.vscode/
+*.code-workspace
+ 
+ 
+# ============================================
+# Java
+# ============================================
+# 컴파일된 클래스 파일
 *.class
-
-# Log file
+ 
+# 로그 파일
 *.log
-
-# BlueJ files
+ 
+# BlueJ 파일
 *.ctxt
-
-# Mobile Tools for Java (J2ME)
+ 
+# Mobile Tools for Java
 .mtj.tmp/
-
-# Package Files #
-*.jar
+ 
+# 아카이브 파일 (실수로 커밋 방지)
 *.war
 *.nar
 *.ear
 *.zip
 *.tar.gz
 *.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+ 
+# JVM 크래시 로그
 hs_err_pid*
 replay_pid*
+ 
+ 
+# ============================================
+# Spring Boot / Gradle
+# ============================================
+build/
+.gradle/
+bin/
+logs/
+HELP.md
+ 
+ 
+# ============================================
+# Node.js / React
+# ============================================
+node_modules/
+dist/
+.vite/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+ 
+ 
+# ============================================
+# Docker
+# ============================================
+docker-compose.override.yml
