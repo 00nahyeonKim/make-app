@@ -145,3 +145,5 @@ coverage/
 # Docker
 # ============================================
 docker-compose.override.yml
+
+CLAUDE.md

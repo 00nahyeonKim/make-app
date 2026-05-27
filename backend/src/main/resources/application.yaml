@@ -26,3 +26,12 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+
+jwt:
+  secret: ${JWT_SECRET:make-app-secret-key-must-be-at-least-256-bits-long!!}
+  access-expiration: 3600000      # 1시간 (ms)
+  refresh-expiration: 604800000   # 7일 (ms)
+
+kakao:
+  client-id: ${KAKAO_CLIENT_ID:}
+  redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/auth/callback}
