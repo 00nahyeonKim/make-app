@@ -10,7 +10,7 @@ function MainPage() {
   };
 
   return (
-    <section className="relative flex min-h-dvh flex-col items-center px-5 pb-28 pt-20 text-center">
+    <section className="relative flex min-h-full flex-col items-center px-5 pb-28 pt-20 text-center">
       <div className="flex flex-col items-center">
         <h1 className="text-[52px] font-black leading-none tracking-[-0.08em] text-[#f59a58]">
           픽타임
@@ -22,7 +22,7 @@ function MainPage() {
       </div>
 
       <div className="mt-12">
-        <div className="mx-auto mb-7 h-9 w-9 rounded-fill">
+        <div className="mx-auto mb-7 w-[80%] ">
           <Mascot />
         </div>
       </div>
@@ -42,7 +42,11 @@ function MainPage() {
 
 function Mascot() {
   return (
-    <img src={mascotImage} alt="픽타임 캐릭터" className="mx-auto w-62.5" />
+    <img
+      src={mascotImage}
+      alt="픽타임 캐릭터"
+      className="mx-auto h-auto w-full object-contain"
+    />
   );
 }
 
