@@ -2,9 +2,13 @@ package com.makeapp.backend.entity;
 
 import java.time.LocalDateTime;
 
-import org.flywaydb.core.api.ErrorCode;
+import org.hibernate.annotations.SQLRestriction;
+
+import com.makeapp.backend.exception.CustomException;
+import com.makeapp.backend.exception.ErrorCode;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -16,14 +20,24 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
+
+@Entity
+@Table(name = "PARTICIPANTS")
+@SQLRestriction("deleted_at IS NULL")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 
 public class Participant extends BaseEntity{
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "participant_seq")
     @SequenceGenerator(name = "participant_seq", sequenceName = "SEQ_PARTICIPANTS", allocationSize = 50)
-    private Long Id;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY) // 하나의 Meeting에 여러 Participant가 있을 수 있다.
     @JoinColumn(name = "meeting_id", nullable = false)
