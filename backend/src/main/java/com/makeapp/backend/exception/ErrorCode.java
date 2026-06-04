@@ -11,6 +11,7 @@ public enum ErrorCode {
     KAKAO_AUTH_FAILED(401, "KAKAO_AUTH_FAILED", "카카오 인증에 실패했습니다."),
     UNAUTHORIZED(401, "UNAUTHORIZED", "로그인이 필요합니다."),
     INVALID_TOKEN(401, "INVALID_TOKEN", "유효하지 않은 토큰입니다."),
+    EXPIRED_TOKEN(401, "EXPIRED_TOKEN", "만료된 토큰입니다."),
     FORBIDDEN(403, "FORBIDDEN", "권한이 없습니다."), // 본인 모임이 아닌데 수정/삭제 시도할 때
 
     //모임
