@@ -18,6 +18,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 
 @Component
+// JWT를 어떻게 만들고 검증하는가에 대한 클래스
 public class JwtProvider {
 
     private final SecretKey key;
@@ -41,7 +42,7 @@ public class JwtProvider {
         return createToken(userId, accessExpiration);
     }
 
-    public String createToken(Long userId) {
+    public String createRefreshToken(Long userId) {
         return createToken(userId, refreshExpiration);
     }
 
