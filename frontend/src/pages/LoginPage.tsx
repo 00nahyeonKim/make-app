@@ -1,13 +1,11 @@
-// import { useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import loginIllustration from "../assets/mascot.png";
 import kakaoLoginButtonImage from "../assets/kakao-login-button.png";
+import Header from "../layouts/Header";
+import { ChevronLeft } from "lucide-react";
 
 function LoginPage() {
-  // const navigate = useNavigate();
-
-  // const handleBack = () => {
-  //   navigate(-1);
-  // };
+  const navigate = useNavigate();
 
   const handleKakaoLogin = () => {
     // 나중에 카카오 OAuth URL로 이동하도록 연결
@@ -15,7 +13,17 @@ function LoginPage() {
   };
   return (
     <section className="flex min-h-full flex-col">
-      <header></header>
+      <Header
+        title="로그인"
+        left={
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="뒤로가기"
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#f5f5f5]">
+            <ChevronLeft size={26} strokeWidth={2.4} />
+          </button>
+        }></Header>
 
       <main className="flex flex-1 flex-col items-center px-7 pt-12 text-center">
         <img
