@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import Button from "../components/Button";
 import mascotImage from "../assets/mascot.png";
+import { ChevronsDown } from "lucide-react";
 
 function MainPage() {
   const navigate = useNavigate();
@@ -27,8 +28,9 @@ function MainPage() {
         </div>
       </div>
 
-      <div className="absolute bottom-20 left-0 right-0 flex justify-center">
-        <p className="text-sm font-bold text-[#f59a58]">˅ 스크롤 해 보세요</p>
+      <div className="absolute bottom-20 left-0 right-0 flex justify-center animate-bounce text-[#f59a58]">
+        <ChevronsDown size={24} strokeWidth={2} />
+        <p className="text-base font-bold">스크롤 해 보세요</p>
       </div>
 
       <div className="absolute bottom-5 left-4 right-4">

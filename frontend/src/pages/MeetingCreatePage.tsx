@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ChangeEvent, SubmitEventHandler } from "react";
 import { useNavigate } from "react-router";
 import Button from "../components/Button";
+import { Minus, Plus } from "lucide-react";
 
 const MAX_MEETING_NAME_LENGTH = 10;
 const MIN_PARTICIPANT_COUNT = 1;
@@ -71,18 +72,16 @@ function MeetingCreatePage() {
 
       <form
         onSubmit={handleSubmit}
-        className="flex flex-1 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7"
-      >
+        className="flex flex-1 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7">
         <div className="flex-1">
-          <h1 className="text-[22px] font-black tracking-tighter text-[#2d2d2d]">
+          <h1 className="text-[24px] font-black tracking-tighter text-[#2d2d2d]">
             어떤 약속인가요?
           </h1>
 
           <div className="mt-8">
             <label
               htmlFor="meetingName"
-              className="block text-[13px] font-bold tracking-[-0.04em] text-[#4a4a4a]"
-            >
+              className="block text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
               약속 이름을 입력하세요
               <span className="text-[#fc3a3a]">*</span>
             </label>
@@ -97,7 +96,7 @@ function MeetingCreatePage() {
           </div>
 
           <div className="mt-6">
-            <p className="text-[13px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
+            <p className="text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
               약속 참여 인원을 입력하세요
             </p>
 
@@ -105,17 +104,15 @@ function MeetingCreatePage() {
               className={[
                 "mt-3 flex h-10 items-center border border-[#cfcfcf] bg-white",
                 isUndecided ? "opacity-50" : "",
-              ].join(" ")}
-            >
+              ].join(" ")}>
               <button
                 type="button"
                 onClick={handleDecrease}
                 disabled={
                   isUndecided || participantCount <= MIN_PARTICIPANT_COUNT
                 }
-                className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
-              >
-                -
+                className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
+                <Minus size={24} strokeWidth={2} />
               </button>
 
               <div className="flex-1 text-center text-lg font-bold text-[#555555]">
@@ -128,13 +125,12 @@ function MeetingCreatePage() {
                 disabled={
                   isUndecided || participantCount >= MAX_PARTICIPANT_COUNT
                 }
-                className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
-              >
-                +
+                className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
+                <Plus size={24} strokeWidth={2} />
               </button>
             </div>
 
-            <label className="mt-2 flex h-6 cursor-pointer items-center rounded border border-[#e5e5e5] bg-white px-2 text-[11px] font-semibold tracking-[-0.03em] text-[#9b9b9b]">
+            <label className="mt-2 flex h-8 cursor-pointer items-center rounded border border-[#e5e5e5] bg-white px-2 text-[13px] font-semibold tracking-[-0.03em] text-[#9b9b9b]">
               <input
                 type="checkbox"
                 checked={isUndecided}
@@ -146,11 +142,7 @@ function MeetingCreatePage() {
           </div>
         </div>
 
-        <Button
-          type="submit"
-          fullWidth
-          className="text-[15px] font-black tracking-[-0.04em] active:scale-[0.99]"
-        >
+        <Button type="submit" fullWidth>
           다음
         </Button>
       </form>
