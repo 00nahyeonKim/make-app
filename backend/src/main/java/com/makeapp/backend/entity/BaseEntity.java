@@ -16,7 +16,7 @@ import lombok.Getter;
 @Getter
 @MappedSuperclass // 부모 클래스를 테이블 만들지 말고 컬럼 상속용으로 사용
 @EntityListeners(AuditingEntityListener.class) // 엔티티 저장/수정 시 자동으로 createdAt, updatedAt 같은 값 채우기 위한 감시자 등록
-public class BaseEntity {
+public abstract class BaseEntity {
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

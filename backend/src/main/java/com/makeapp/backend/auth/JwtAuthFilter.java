@@ -57,7 +57,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (bearer != null && bearer.startsWith("Bearer ")) {
             return bearer.substring(7);
         }
-        // 2순위: HttpOnly Cookie (브라우저 자동 전송)
+        // 2순위: HttpOnly Cookie (브라우저 자동 전송) - JS에서 접근 자체가 차단됨, HTTP 요청/응답으로만 전송
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if ("access_token".equals(cookie.getName())) {

@@ -23,7 +23,6 @@ public enum ErrorCode {
     // 참가자
     PARTICIPANT_NOT_FOUND(404, "PARTICIPANT_NOT_FOUND", "참가자 정보를 찾을 수 없습니다."),
     DUPLICATED_PARTICIPATION(409, "DUPLICATED_PARTICIPATION", "이미 참가 중인 모임입니다."),
-
     GUEST_NOT_FOUND(404, "GUEST_NOT_FOUND", "게스트 참여자를 찾을 수 없습니다."),
     PIN_MISMATCH(401, "PIN_MISMATCH", "PIN이 일치하지 않습니다."),
     PIN_LOCKED(429, "PIN_LOCKED", "PIN 입력 횟수를 초과했습니다. 잠시 후 다시 시도하세요."),
