@@ -4,11 +4,11 @@
 
 | 항목      | 값                         |
 | --------- | -------------------------- |
-| 버전      | v0.2                       |
-| 작성일    | 2026-05-22                 |
+| 버전      | v0.3                       |
+| 작성일    | 2026-06-05                 |
 | Base URL  | `https://api.make-app.com` |
 | 응답 형식 | JSON (UTF-8)               |
-| 인증 방식 | JWT (Bearer Token)         |
+| 인증 방식 | JWT (HttpOnly Cookie)      |
 
 ---
 
@@ -25,25 +25,30 @@
 
 ### 1.2 인증 방식
 
-카카오 OAuth로 로그인한 사용자는 **JWT Access Token**을 받아 헤더에 담아 요청한다.
+모든 JWT(소셜 로그인/게스트 모두)는 **HttpOnly Cookie** (`access_token`)로 관리된다.  
+브라우저는 동일 도메인 요청 시 쿠키를 자동 전송하므로 클라이언트가 토큰을 직접 다룰 필요가 없다.
+
+**소셜 로그인 사용자 (리더/회원)**
+- `POST /api/auth/kakao/callback` 성공 시 서버가 `Set-Cookie: access_token=...; HttpOnly` 응답
+- 이후 요청에는 쿠키가 자동 포함
+
+**비회원 게스트**
+- 초대 URL 접속 후 `POST /api/auth/guest/register`에서 닉네임 + 4자리 PIN 설정
+- 서버가 게스트 JWT를 HttpOnly Cookie로 발급
+- 다른 기기에서 재접속 시 `POST /api/auth/guest/login`으로 PIN 검증 후 쿠키 재발급
+
+**Postman 테스트 시**  
+Authorization 헤더 방식도 병행 지원한다.
 
 ```
 Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 ```
 
-**비회원 팔로워**는 게스트 토큰을 헤더로 전달한다.
-
-```
-X-Guest-Token: 7a3b5c9d-...
-```
-
-요청별 인증 방식 정리:
-
-| 인증 유형      | 헤더                          | 사용 대상                                 |
-| -------------- | ----------------------------- | ----------------------------------------- |
-| `Bearer Token` | `Authorization: Bearer {jwt}` | 카카오 로그인 사용자 (리더 + 소셜 팔로워) |
-| `Guest Token`  | `X-Guest-Token: {token}`      | 비회원 팔로워                             |
-| `Public`       | 없음                          | 초대 URL 접속, 결과 URL 접속              |
+| 인증 유형      | 방식                                     | 사용 대상                    |
+| -------------- | ---------------------------------------- | ---------------------------- |
+| `Cookie`       | `access_token` HttpOnly Cookie (자동)    | 소셜 로그인 사용자 / 게스트  |
+| `Bearer Token` | `Authorization: Bearer {jwt}` (Postman) | Postman 테스트 시 대안       |
+| `Public`       | 없음                                     | 초대 URL 접속, 결과 URL 접속 |
 
 ### 1.3 공통 응답 형식
 
@@ -84,42 +89,49 @@ X-Guest-Token: 7a3b5c9d-...
 
 ### 1.5 공통 에러 코드
 
-| 코드                        | HTTP | 설명                        |
-| --------------------------- | ---- | --------------------------- |
-| `INVALID_REQUEST`           | 400  | 요청 형식 오류, 필수값 누락 |
-| `UNAUTHORIZED`              | 401  | 인증 정보 없음 또는 만료    |
-| `FORBIDDEN`                 | 403  | 권한 부족                   |
-| `MEETING_NOT_FOUND`         | 404  | 존재하지 않는 모임          |
-| `MEETING_EXPIRED`           | 410  | 마감된 모임                 |
-| `MEETING_ALREADY_CONFIRMED` | 409  | 이미 확정된 모임            |
-| `PARTICIPANT_NOT_FOUND`     | 404  | 존재하지 않는 참여자        |
-| `DUPLICATE_PARTICIPATION`   | 409  | 이미 참여 중인 모임         |
-| `INTERNAL_ERROR`            | 500  | 서버 내부 오류              |
+| 코드                        | HTTP | 설명                              |
+| --------------------------- | ---- | --------------------------------- |
+| `INVALID_REQUEST`           | 400  | 요청 형식 오류, 필수값 누락       |
+| `UNAUTHORIZED`              | 401  | 인증 정보 없음 또는 만료          |
+| `INVALID_TOKEN`             | 401  | 유효하지 않은 토큰                |
+| `EXPIRED_TOKEN`             | 401  | 만료된 토큰                       |
+| `PIN_MISMATCH`              | 401  | PIN 불일치                        |
+| `FORBIDDEN`                 | 403  | 권한 부족                         |
+| `MEETING_NOT_FOUND`         | 404  | 존재하지 않는 모임                |
+| `PARTICIPANT_NOT_FOUND`     | 404  | 존재하지 않는 참여자              |
+| `GUEST_NOT_FOUND`           | 404  | 해당 닉네임의 게스트 없음         |
+| `MEETING_ALREADY_CONFIRMED` | 409  | 이미 확정된 모임                  |
+| `DUPLICATE_PARTICIPATION`   | 409  | 이미 참여 중인 모임               |
+| `MEETING_EXPIRED`           | 410  | 마감된 모임                       |
+| `PIN_LOCKED`                | 429  | PIN 실패 5회 초과 — 30분 잠금     |
+| `INTERNAL_ERROR`            | 500  | 서버 내부 오류                    |
 
 ---
 
 ## 2. API 엔드포인트 전체 목록
 
-| 그룹           | Method | URI                                                  | 설명                  | 인증                |
-| -------------- | ------ | ---------------------------------------------------- | --------------------- | ------------------- |
-| Auth           | POST   | `/api/auth/kakao/callback`                           | 카카오 로그인 콜백    | Public              |
-| Auth           | POST   | `/api/auth/logout`                                   | 로그아웃              | Bearer              |
-| Auth           | POST   | `/api/auth/refresh`                                  | 토큰 재발급           | Refresh Token       |
-| Meetings       | POST   | `/api/meetings`                                      | 모임 생성             | Bearer              |
-| Meetings       | GET    | `/api/meetings/invite/{inviteToken}`                 | 초대 URL로 모임 조회  | Public              |
-| Meetings       | GET    | `/api/meetings/result/{resultToken}`                 | 결과 URL로 모임 조회  | Public              |
-| Meetings       | PUT    | `/api/meetings/{id}`                                 | 모임 수정 (리더만)    | Bearer              |
-| Meetings       | POST   | `/api/meetings/{id}/confirm`                         | 일정 확정             | Bearer              |
-| Meetings       | POST   | `/api/meetings/{id}/expire`                          | 모임 마감             | Bearer              |
-| Meetings       | POST   | `/api/meetings/{id}/cancel`                          | 모임 삭제             | Bearer              |
-| My             | GET    | `/api/my/meetings`                                   | 내가 만든 모임 목록   | Bearer              |
-| Participants   | POST   | `/api/meetings/{inviteToken}/participants`           | 모임 참여 등록        | Bearer/Guest/Public |
-| Participants   | GET    | `/api/meetings/{inviteToken}/participants`           | 참여자 목록 조회      | Public              |
-| Participants   | GET    | `/api/meetings/{inviteToken}/participants/me`        | 본인 참여 정보 조회   | Bearer/Guest        |
-| Participants   | POST   | `/api/meetings/{inviteToken}/participants/me/submit` | 응답 완료 처리        | Bearer/Guest        |
-| Availabilities | PUT    | `/api/meetings/{inviteToken}/availabilities`         | 본인 응답 등록/수정   | Bearer/Guest        |
-| Availabilities | GET    | `/api/meetings/{inviteToken}/availabilities`         | 응답 현황 조회        | Public              |
-| Results        | GET    | `/api/meetings/{inviteToken}/results`                | 결과 화면 데이터 조회 | Public              |
+| 그룹           | Method | URI                                                  | 설명                           | 인증                   |
+| -------------- | ------ | ---------------------------------------------------- | ------------------------------ | ---------------------- |
+| Auth           | POST   | `/api/auth/kakao/callback`                           | 카카오 로그인 → Cookie 발급    | Public                 |
+| Auth           | POST   | `/api/auth/logout`                                   | 로그아웃 → Cookie 삭제         | Cookie                 |
+| Auth           | POST   | `/api/auth/refresh`                                  | 토큰 재발급 → Cookie 갱신      | Refresh Token (Body)   |
+| Auth           | POST   | `/api/auth/guest/register`                           | 비회원 참가 등록 → 게스트 Cookie | Public                |
+| Auth           | POST   | `/api/auth/guest/login`                              | 비회원 재접속 → 게스트 Cookie  | Public                 |
+| Meetings       | POST   | `/api/meetings`                                      | 모임 생성                      | Cookie                 |
+| Meetings       | GET    | `/api/meetings/invite/{inviteToken}`                 | 초대 URL로 모임 조회           | Public                 |
+| Meetings       | GET    | `/api/meetings/result/{resultToken}`                 | 결과 URL로 모임 조회           | Public                 |
+| Meetings       | PUT    | `/api/meetings/{id}`                                 | 모임 수정 (리더만)             | Cookie                 |
+| Meetings       | POST   | `/api/meetings/{id}/confirm`                         | 일정 확정                      | Cookie (Leader)        |
+| Meetings       | POST   | `/api/meetings/{id}/expire`                          | 모임 마감                      | Cookie (Leader)        |
+| Meetings       | POST   | `/api/meetings/{id}/cancel`                          | 모임 삭제                      | Cookie (Leader)        |
+| My             | GET    | `/api/my/meetings`                                   | 내가 만든 모임 목록            | Cookie                 |
+| Participants   | POST   | `/api/meetings/{inviteToken}/participants`           | 소셜 회원 참여 등록            | Cookie                 |
+| Participants   | GET    | `/api/meetings/{inviteToken}/participants`           | 참여자 목록 조회               | Public                 |
+| Participants   | GET    | `/api/meetings/{inviteToken}/participants/me`        | 본인 참여 정보 조회            | Cookie                 |
+| Participants   | POST   | `/api/meetings/{inviteToken}/participants/me/submit` | 응답 완료 처리                 | Cookie                 |
+| Availabilities | PUT    | `/api/meetings/{inviteToken}/availabilities`         | 본인 응답 등록/수정            | Cookie                 |
+| Availabilities | GET    | `/api/meetings/{inviteToken}/availabilities`         | 응답 현황 조회                 | Public                 |
+| Results        | GET    | `/api/meetings/{inviteToken}/results`                | 결과 화면 데이터 조회          | Public                 |
 
 ---
 
@@ -146,6 +158,8 @@ X-Guest-Token: 7a3b5c9d-...
 
 **Response 200 OK**
 
+응답 헤더에 `Set-Cookie: access_token=eyJ...; HttpOnly; Path=/; SameSite=Lax; Max-Age=3600` 포함.
+
 ```json
 {
   "success": true,
@@ -159,6 +173,8 @@ X-Guest-Token: 7a3b5c9d-...
   }
 }
 ```
+
+> Body의 `accessToken`은 Postman 테스트 편의를 위해 유지. 브라우저 클라이언트는 Cookie를 사용.
 
 **에러**
 
@@ -175,9 +191,11 @@ X-Guest-Token: 7a3b5c9d-...
 | ------ | ------------------ |
 | Method | `POST`             |
 | URI    | `/api/auth/logout` |
-| 인증   | Bearer             |
+| 인증   | Cookie             |
 
 **Response 204 No Content**
+
+응답 헤더에 `Set-Cookie: access_token=; Max-Age=0` 포함 → 쿠키 삭제.
 
 ---
 
@@ -207,6 +225,109 @@ X-Guest-Token: 7a3b5c9d-...
   }
 }
 ```
+
+---
+
+### 3.4 비회원 게스트 등록
+
+초대 URL에 접속한 비회원이 닉네임과 PIN을 설정하여 처음 참가한다.
+
+| 항목   | 값                          |
+| ------ | --------------------------- |
+| Method | `POST`                      |
+| URI    | `/api/auth/guest/register`  |
+| 인증   | Public                      |
+
+**Request Body**
+
+```json
+{
+  "inviteToken": "550e8400-e29b-41d4-a716-446655440000",
+  "displayName": "김철수",
+  "pin": "1234"
+}
+```
+
+**필드 검증**
+
+| 필드        | 타입   | 필수 | 제약                              |
+| ----------- | ------ | ---- | --------------------------------- |
+| inviteToken | String | ✅   | 유효한 모임 초대 토큰             |
+| displayName | String | ✅   | 1~50자                            |
+| pin         | String | ✅   | 숫자 4자리 (`\d{4}`)             |
+
+**Response 201 Created**
+
+응답 헤더에 `Set-Cookie: access_token=...; HttpOnly; Path=/; SameSite=Lax; Max-Age=3600` 포함.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1002,
+    "displayName": "김철수",
+    "type": "GUEST",
+    "submitted": false
+  }
+}
+```
+
+> 동명이인이 있을 경우 서버에서 자동으로 `(2)`, `(3)` 등 접미사를 부여한다.
+
+**에러**
+
+| HTTP | code                | 설명                         |
+| ---- | ------------------- | ---------------------------- |
+| 400  | `INVALID_REQUEST`   | 필수값 누락 또는 형식 오류   |
+| 404  | `MEETING_NOT_FOUND` | 존재하지 않는 초대 토큰      |
+| 410  | `MEETING_EXPIRED`   | 마감된 모임                  |
+
+---
+
+### 3.5 비회원 게스트 재로그인
+
+기존 참가자가 다른 기기에서 재접속 시 닉네임과 PIN으로 인증한다.
+
+| 항목   | 값                        |
+| ------ | ------------------------- |
+| Method | `POST`                    |
+| URI    | `/api/auth/guest/login`   |
+| 인증   | Public                    |
+
+**Request Body**
+
+```json
+{
+  "inviteToken": "550e8400-e29b-41d4-a716-446655440000",
+  "displayName": "김철수",
+  "pin": "1234"
+}
+```
+
+**Response 200 OK**
+
+응답 헤더에 `Set-Cookie: access_token=...; HttpOnly; ...` 포함. 기존 참가자 정보 반환.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1002,
+    "displayName": "김철수",
+    "type": "GUEST",
+    "submitted": true,
+    "submittedAt": "2026-06-01T15:30:00"
+  }
+}
+```
+
+**에러**
+
+| HTTP | code                | 설명                              |
+| ---- | ------------------- | --------------------------------- |
+| 401  | `PIN_MISMATCH`      | PIN 불일치                        |
+| 404  | `GUEST_NOT_FOUND`   | 해당 닉네임의 참가자 없음         |
+| 429  | `PIN_LOCKED`        | 5회 실패 → 30분 접근 잠금         |
 
 ---
 
@@ -482,33 +603,23 @@ X-Guest-Token: 7a3b5c9d-...
 
 ## 6. Participants (참여자)
 
-### 6.1 모임 참여 등록
+### 6.1 모임 참여 등록 (소셜 회원 전용)
 
-팔로워가 모임에 처음 들어왔을 때 참여자 정보를 등록. 카카오 로그인 또는 비회원으로 가입.
+소셜 로그인 회원이 모임에 참가할 때 사용.  
+**비회원 게스트 참가는 `POST /api/auth/guest/register` (섹션 3.4) 를 사용한다.**
 
-| 항목     | 값                                                     |
-| -------- | ------------------------------------------------------ |
-| Method   | `POST`                                                 |
-| URI      | `/api/meetings/{inviteToken}/participants`             |
-| 인증     | Bearer 또는 Guest 또는 Public (방식에 따라)            |
-| 요구사항 | FR-033, FR-034, FR-035, FR-036, FR-037, FR-073, FR-074 |
+| 항목     | 값                                        |
+| -------- | ----------------------------------------- |
+| Method   | `POST`                                    |
+| URI      | `/api/meetings/{inviteToken}/participants` |
+| 인증     | Cookie (소셜 로그인)                      |
+| 요구사항 | FR-033, FR-034, FR-035, FR-036, FR-037    |
 
 **Request Body**
-
-소셜 로그인 사용자 (Bearer 헤더 포함):
 
 ```json
 {
   "type": "MEMBER"
-}
-```
-
-비회원 (Public 요청):
-
-```json
-{
-  "type": "GUEST",
-  "displayName": "김민수"
 }
 ```
 
@@ -521,22 +632,7 @@ X-Guest-Token: 7a3b5c9d-...
     "id": 1001,
     "displayName": "김민수",
     "type": "MEMBER",
-    "guestToken": null,
-    "submittedAt": null
-  }
-}
-```
-
-비회원의 경우 `guestToken`이 발급되어 응답에 포함됨. 클라이언트는 이 값을 쿠키/로컬스토리지에 저장.
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1002,
-    "displayName": "김민수 (2)",
-    "type": "GUEST",
-    "guestToken": "7a3b5c9d-1234-5678-9abc-def012345678",
+    "submitted": false,
     "submittedAt": null
   }
 }
@@ -599,7 +695,7 @@ X-Guest-Token: 7a3b5c9d-...
 | -------- | --------------------------------------------- |
 | Method   | `GET`                                         |
 | URI      | `/api/meetings/{inviteToken}/participants/me` |
-| 인증     | Bearer 또는 Guest                             |
+| 인증     | Cookie (소셜/게스트 공통)                     |
 | 요구사항 | FR-038, FR-039                                |
 
 **Response 200 OK**
@@ -630,7 +726,7 @@ X-Guest-Token: 7a3b5c9d-...
 | -------- | ---------------------------------------------------- |
 | Method   | `POST`                                               |
 | URI      | `/api/meetings/{inviteToken}/participants/me/submit` |
-| 인증     | Bearer 또는 Guest                                    |
+| 인증     | Cookie (소셜/게스트 공통)                            |
 | 요구사항 | FR-046, FR-066                                       |
 
 **Response 200 OK**
@@ -656,7 +752,7 @@ X-Guest-Token: 7a3b5c9d-...
 | -------- | ------------------------------------------------------ |
 | Method   | `PUT`                                                  |
 | URI      | `/api/meetings/{inviteToken}/availabilities`           |
-| 인증     | Bearer 또는 Guest                                      |
+| 인증     | Cookie (소셜/게스트 공통)                              |
 | 요구사항 | FR-041, FR-042, FR-043, FR-044, FR-045, FR-047, FR-075 |
 
 **Request Body**
@@ -803,18 +899,19 @@ X-Guest-Token: 7a3b5c9d-...
 
 다음 항목들은 초안에서 보편적인 기본값으로 작성했지만 팀 논의가 필요해.
 
-| 항목             | 현재 초안                | 대안             |
-| ---------------- | ------------------------ | ---------------- |
-| 인증 방식        | JWT (Access + Refresh)   | 세션 기반 인증   |
-| 비회원 토큰 전달 | 헤더 `X-Guest-Token`     | 쿠키 자동 전송   |
-| 응답 래퍼        | `{ success, data }` 형식 | 데이터 직접 응답 |
-| 페이징           | offset 기반 (page, size) | cursor 기반      |
+| 항목             | 결정                       | 비고                                              |
+| ---------------- | -------------------------- | ------------------------------------------------- |
+| 인증 방식        | JWT (HttpOnly Cookie)      | ✅ 확정 — localStorage 대신 보안 쿠키 사용         |
+| 비회원 인증      | 닉네임 + PIN (해시 저장)   | ✅ 확정 — X-Guest-Token 헤더 방식 폐기             |
+| 응답 래퍼        | `{ success, data }` 형식   | ✅ 유지                                            |
+| 페이징           | offset 기반 (page, size)   | 미결 — 대규모 데이터 시 cursor 기반 고려           |
 
 ---
 
 ## 11. 변경 이력
 
-| 버전 | 날짜       | 변경 내용        |
-| ---- | ---------- | ---------------- |
-| v0.1 | 2026-05-20 | 초안 작성        |
-| v0.2 | 2026-05-22 | HTTP method 수정 |
+| 버전 | 날짜       | 변경 내용                                                               |
+| ---- | ---------- | ----------------------------------------------------------------------- |
+| v0.1 | 2026-05-20 | 초안 작성                                                               |
+| v0.2 | 2026-05-22 | HTTP method 수정                                                        |
+| v0.3 | 2026-06-05 | 비회원 인증 방식 변경 (X-Guest-Token → PIN 해시 + HttpOnly Cookie JWT), 게스트 등록/로그인 엔드포인트 추가 |

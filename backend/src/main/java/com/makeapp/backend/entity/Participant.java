@@ -47,8 +47,14 @@ public class Participant extends BaseEntity{
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(name = "guest_token", length = 64) // 비회원 본인 식별용 토큰 - 나중에 다시 왔을 때 같은 사람인지 확인(기기나 브라우저가 바뀌면 인식 못함 이슈로 다른 기기로 접속하고 싶으면 소셜 로그인 해야 함.)
-    private String guestToken;
+    @Column(name = "pin_hash", length = 255)
+    private String pinHash;
+
+    @Column(name = "pin_fail_count", nullable = false)
+    private int pinFailCount = 0;
+
+    @Column(name = "pin_locked_until")
+    private LocalDateTime pinLockedUntil;
 
     @Column(name = "display_name", nullable = false, length = 50)
     private String displayName;
@@ -61,17 +67,37 @@ public class Participant extends BaseEntity{
     private LocalDateTime submittedAt;
 
     @Builder
-    public Participant(Meeting meeting, User user, String guestToken,
-                       String displayName, ParticipantType type) {
+    public Participant(Meeting meeting, User user, String pinHash,
+                    String displayName, ParticipantType type) {
         this.meeting = meeting;
         this.user = user;
-        this.guestToken = guestToken;
+        this.pinHash = pinHash;
         this.displayName = displayName;
         this.type = type;
     }
 
     public void submit() {
         this.submittedAt = LocalDateTime.now();
+    }
+
+    public boolean isPinLocked() {
+    return pinLockedUntil != null && LocalDateTime.now().isBefore(pinLockedUntil);
+    }
+
+    public void incrementPinFail() {
+        this.pinFailCount++;
+        if (this.pinFailCount >= 5) {
+            this.pinLockedUntil = LocalDateTime.now().plusMinutes(30);
+        }
+    }
+
+    public void resetPinFail() {
+        this.pinFailCount = 0;
+        this.pinLockedUntil = null;
+    }
+
+    public void updatePinHash(String pinHash) {
+        this.pinHash = pinHash;
     }
 
     // submittedAt이 null이면 미제출, 값이 있으면 제출 완료
@@ -84,7 +110,7 @@ public class Participant extends BaseEntity{
     @PreUpdate // 엔터티가 DB에 수정되기 직전에 실행
     // 소셜/비회원 둘 중 어느쪽으로든 로그인한 사림인지 검증
     private void validate() {
-        if (user == null && guestToken == null) {
+        if (user == null && pinHash  == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
     }

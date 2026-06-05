@@ -41,7 +41,9 @@
 
 ## 3. ERD
 
-![ERD](ERD_img/make_app_erd_v4.jpg)
+![ERD](ERD_img/make_app_erd_v5.jpg)
+
+> Mermaid 소스: [make_app_erd_v5.md](ERD_img/make_app_erd_v5.md)
 
 ---
 
@@ -134,40 +136,43 @@ DRAFT ──→ OPEN ──→ CONFIRMED   (방장이 최종 일정 확정)
 
 > 모임 참여자. 리더, 소셜 팔로워, 비회원 팔로워가 모두 한 테이블에 통합.
 
-| 컬럼           | 자료형       | NULL     | 키/제약          | 설명                                    |
-| -------------- | ------------ | -------- | ---------------- | --------------------------------------- |
-| `id`           | NUMBER(19,0) | NOT NULL | PK               | 참여자 식별자. IDENTITY 자동 채번       |
-| `meeting_id`   | NUMBER(19,0) | NOT NULL | FK → MEETINGS.id | 소속 모임                               |
-| `user_id`      | NUMBER(19,0) | NULL     | FK → USERS.id    | 소셜 로그인 시 채워짐                   |
-| `guest_token`  | VARCHAR2(64) | NULL     |                  | 비회원 참여 시 채워짐. 재접속 식별용    |
-| `display_name` | VARCHAR2(50) | NOT NULL |                  | 화면 표시 이름. 동명이인 처리 결과 반영 |
-| `type`         | VARCHAR2(20) | NOT NULL |                  | 역할: `LEADER` / `MEMBER` / `GUEST`     |
-| `submitted_at` | TIMESTAMP    | NULL     |                  | 응답 완료 시각. NULL이면 미응답/응답 중 |
-| `created_at`   | TIMESTAMP    | NOT NULL |                  | 참여 등록 시각                          |
-| `updated_at`   | TIMESTAMP    | NOT NULL |                  | 마지막 수정 시각                        |
-| `deleted_at`   | TIMESTAMP    | NULL     |                  | 소프트 삭제 시각                        |
+| 컬럼              | 자료형        | NULL     | 키/제약          | 설명                                          |
+| ----------------- | ------------- | -------- | ---------------- | --------------------------------------------- |
+| `id`              | NUMBER(19,0)  | NOT NULL | PK               | 참여자 식별자. IDENTITY 자동 채번             |
+| `meeting_id`      | NUMBER(19,0)  | NOT NULL | FK → MEETINGS.id | 소속 모임                                     |
+| `user_id`         | NUMBER(19,0)  | NULL     | FK → USERS.id    | 소셜 로그인 시 채워짐                         |
+| `pin_hash`        | VARCHAR2(255) | NULL     |                  | 비회원 PIN BCrypt 해시. 소셜 사용자는 NULL    |
+| `pin_fail_count`  | NUMBER(3,0)   | NOT NULL |                  | 연속 PIN 실패 횟수. 기본값 0                  |
+| `pin_locked_until`| TIMESTAMP     | NULL     |                  | 잠금 해제 시각. NULL이면 잠금 없음            |
+| `display_name`    | VARCHAR2(50)  | NOT NULL |                  | 화면 표시 이름. 동명이인 처리 결과 반영       |
+| `type`            | VARCHAR2(20)  | NOT NULL |                  | 역할: `LEADER` / `MEMBER` / `GUEST`           |
+| `submitted_at`    | TIMESTAMP     | NULL     |                  | 응답 완료 시각. NULL이면 미응답/응답 중       |
+| `created_at`      | TIMESTAMP     | NOT NULL |                  | 참여 등록 시각                                |
+| `updated_at`      | TIMESTAMP     | NOT NULL |                  | 마지막 수정 시각                              |
+| `deleted_at`      | TIMESTAMP     | NULL     |                  | 소프트 삭제 시각                              |
 
 **추가 제약 (필수)**
 
 ```sql
--- user_id와 guest_token 중 정확히 하나만 채워져야 함
-CHECK ((user_id IS NOT NULL AND guest_token IS NULL)
-    OR (user_id IS NULL AND guest_token IS NOT NULL))
+-- user_id와 pin_hash 중 정확히 하나만 채워져야 함
+CHECK ((user_id IS NOT NULL AND pin_hash IS NULL)
+    OR (user_id IS NULL AND pin_hash IS NOT NULL))
 
 -- 같은 모임에 같은 소셜 사용자 중복 참여 방지
 UNIQUE (meeting_id, user_id)
 
--- 같은 모임에 같은 게스트 토큰 중복 참여 방지
-UNIQUE (meeting_id, guest_token)
+-- 같은 모임에 같은 닉네임 중복 방지
+UNIQUE (meeting_id, display_name)
 ```
 
 **비즈니스 규칙**
 
 - `LEADER` 타입: 모임을 만든 리더 자신이 응답을 남길 때 (`meetings.owner_id`와 동일인)
 - `MEMBER` 타입: 카카오 로그인으로 참여한 팔로워
-- `GUEST` 타입: 비회원으로 참여한 팔로워 (`guest_token`만 가짐)
+- `GUEST` 타입: 비회원으로 참여한 팔로워 (`pin_hash`만 가짐)
 - `display_name`은 동명이인이 있을 때 `김민수 (2)` 식으로 접미사가 붙음
-- `submitted_at`이 NULL이면 "응답 미완료", 값이 있으면 "응답 완료". FR-046/066 처리의 기준
+- PIN 5회 연속 실패 시 `pin_locked_until = NOW() + 30분` 설정, 잠금 해제 전 로그인 불가
+- `submitted_at`이 NULL이면 "응답 미완료", 값이 있으면 "응답 완료"
 
 ---
 
@@ -232,13 +237,14 @@ UNIQUE (participant_id, candidate_slot_id)
 
 ### 6.2 참여자 식별 (소셜 vs 비회원)
 
-| 구분                 | user_id | guest_token | type     |
-| -------------------- | ------- | ----------- | -------- |
-| 카카오 로그인 리더   | 채워짐  | NULL        | `LEADER` |
-| 카카오 로그인 팔로워 | 채워짐  | NULL        | `MEMBER` |
-| 비회원 팔로워        | NULL    | 채워짐      | `GUEST`  |
+| 구분                 | user_id | pin_hash | type     |
+| -------------------- | ------- | -------- | -------- |
+| 카카오 로그인 리더   | 채워짐  | NULL     | `LEADER` |
+| 카카오 로그인 팔로워 | 채워짐  | NULL     | `MEMBER` |
+| 비회원 팔로워        | NULL    | 채워짐   | `GUEST`  |
 
-CHECK 제약으로 두 값 중 정확히 하나만 채워지도록 강제.
+CHECK 제약으로 두 값 중 정확히 하나만 채워지도록 강제.  
+비회원 재접속은 닉네임 + 4자리 PIN 검증으로 처리 (BCrypt `matches`). 게스트 JWT는 HttpOnly Cookie로 발급.
 
 ### 6.3 응답 완료 추적
 
@@ -301,7 +307,7 @@ UNIQUE 제약은 Oracle이 자동으로 인덱스를 생성하므로 별도 정�
 | MEETINGS        | `result_token`                           | 결과 URL 접속 시 모임 조회    |
 | CANDIDATE_SLOTS | `(meeting_id, slot_date, start_time)`    | 중복 슬롯 방지                |
 | PARTICIPANTS    | `(meeting_id, user_id)`                  | 중복 참여 방지                |
-| PARTICIPANTS    | `(meeting_id, guest_token)`              | 비회원 재접속 식별            |
+| PARTICIPANTS    | `(meeting_id, display_name)`             | 같은 모임 내 닉네임 중복 방지 |
 | AVAILABILITIES  | `(participant_id, candidate_slot_id)`    | 중복 응답 방지                |
 
 ---
@@ -385,10 +391,12 @@ V2__create_meetings.sql
 V3__create_candidate_slots.sql
 V4__create_participants.sql
 V5__create_availabilities.sql
-V6__add_confirmed_slot_fk.sql          -- 순환 FK 처리
+V6__add_confirmed_slot_fk.sql           -- 순환 FK 처리
 V7__create_indexes.sql                  -- 비-UNIQUE 인덱스
 V8__add_updated_at_to_candidate_slots.sql
 V9__add_deleted_at_to_availabilities.sql
+V10__create_sequences.sql               -- 시퀀스 생성
+V11__replace_guest_token_with_pin.sql   -- guest_token → pin_hash/pin_fail_count/pin_locked_until
 ```
 
 > 기존 마이그레이션 파일은 절대 수정하지 않고, 변경은 항상 새 버전(V10, V11...)으로 추가한다. Flyway가 체크섬으로 무결성을 검증하기 때문.
@@ -403,3 +411,4 @@ V9__add_deleted_at_to_availabilities.sql
 | v2   | 2026-05-20 | `MEETINGS.time_unit_min` 제거 (30분 고정), `PARTICIPANTS.submitted_at` 추가 |
 | v3   | 2026-05-20 | `MEETINGS.expires_at` 제거 (status로 만료 관리)                             |
 | v4   | 2026-05-22 | 5개 테이블 전체에 `deleted_at` 추가 (소프트 삭제 일관 적용), `CANDIDATE_SLOTS.updated_at` 추가 |
+| v5   | 2026-06-05 | `PARTICIPANTS.guest_token` 삭제 → `pin_hash` / `pin_fail_count` / `pin_locked_until` 추가 (비회원 인증 방식 변경: 랜덤 토큰 → 닉네임+PIN 해시) |
