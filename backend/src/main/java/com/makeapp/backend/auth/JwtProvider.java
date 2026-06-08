@@ -39,7 +39,7 @@ public class JwtProvider {
         return createToken(String.valueOf(userId), accessExpiration, null, null);
     }
 
-    // 회원용 refresh token 발급 (수명만 더 긺)
+    // 회원용 refresh token 발급 (수명만 더 긺)accessExpiration
     public String createRefreshToken(Long userId) {
         return createToken(String.valueOf(userId), refreshExpiration, null, null);
     }

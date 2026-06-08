@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class GuestLoginRequest {
 
-    @NotBlank(message = "초대 토큰을 입력해주세요.")
+    @NotBlank(message = "유효하지 않은 초대 링크입니다.")
     private String inviteToken;
 
     @NotBlank(message = "닉네임을 입력해주세요.")

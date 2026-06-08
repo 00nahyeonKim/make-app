@@ -13,9 +13,15 @@ import org.springframework.web.client.RestClient;
 
 import com.makeapp.backend.auth.JwtProvider;
 import com.makeapp.backend.dto.response.AuthResponse;
+import com.makeapp.backend.entity.Meeting;
+import com.makeapp.backend.entity.MeetingStatus;
+import com.makeapp.backend.entity.Participant;
+import com.makeapp.backend.entity.ParticipantType;
 import com.makeapp.backend.entity.User;
 import com.makeapp.backend.exception.CustomException;
 import com.makeapp.backend.exception.ErrorCode;
+import com.makeapp.backend.repository.MeetingRepository;
+import com.makeapp.backend.repository.ParticipantRepository;
 import com.makeapp.backend.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +36,8 @@ public class AuthService {
     private final UserRepository userRepository; // 카카오에서 받은 kakaoId로 userRepository.findByKakaoId(...) 호출
     private final JwtProvider jwtProvider;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final MeetingRepository meetingRepository;
+    private final ParticipantRepository participantRepository;
 
     @Value("${kakao.client-id}") // application.yaml의 kakao.client-id 값 주입
     private String kakaoClientId;
@@ -109,5 +117,62 @@ public class AuthService {
             if (profile != null) return (String) profile.get("nickname");
         }
         return "사용자";
+    }
+
+    // refresh token이 유효하면, 그 안의 userId로 새 access token을 발급
+    public String refreshAccessToken(String refreshToken) {
+        if (!jwtProvider.isValid(refreshToken)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN); // 만료/위조된 refresh면 거부
+        }
+        return jwtProvider.createAccessToken(jwtProvider.getUserId(refreshToken));
+    }
+
+    // 게스트 최초 참가: 초대 토큰의 모임에 닉네임+PIN으로 새 참가자(GUEST)를 만든다
+    public Participant guestRegister(String inviteToken, String displayName, String rawPin) {
+        Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND)); // 모임 없으면 404 
+        if (meeting.getStatus() == MeetingStatus.EXPIRED) { // 만료된 모임은 참가 불가
+            throw new CustomException(ErrorCode.MEETING_EXPIRED);            
+        }
+        if (displayName == null || displayName.isBlank()) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        String pinHash = passwordEncoder.encode(rawPin);    // PIN을 BCrypt 해시로 변환
+        String resolvedName = resolveDisplayName(meeting, displayName);
+        return participantRepository.save(Participant.builder()
+                .meeting(meeting)
+                .pinHash(pinHash)
+                .displayName(resolvedName)
+                .type(ParticipantType.GUEST)
+                .build());
+    }
+
+    // 같은 모임에 같은 이름이 있으면 이름(n)으로 바꿔 모임 안에서 닉네임이 겹치지 않게 함
+    private String resolveDisplayName(Meeting meeting, String baseName) {
+        long count = participantRepository.findByMeeting(meeting).stream()  // 이 모임의 모든 참가자
+                .filter(p -> p.getDisplayName().equals(baseName)            // "철수" 정확히 일치
+                        || p.getDisplayName().startsWith(baseName + " ("))  //    또는 "철수 (..." 로 시작
+                .count();                                                   // 그런 이름 개수
+        return count == 0 ? baseName : baseName + " (" + (count + 1) + ")"; // 없으면 그대로, 있으면 번호
+    }
+
+    // 게스트 재로그인: 모임+닉네임으로 기존 참가자를 찾아 PIN을 검증
+    public Participant guestLogin(String inviteToken, String displayName, String rawPin) {
+        Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
+        Participant p = participantRepository.findByMeetingAndDisplayName(meeting, displayName)
+                .orElseThrow(() -> new CustomException(ErrorCode.GUEST_NOT_FOUND));
+
+        if (p.isPinLocked()) {
+            throw new CustomException(ErrorCode.PIN_LOCKED);
+        }
+
+        if (!passwordEncoder.matches(rawPin, p.getPinHash())) {
+            p.incrementPinFail();
+            throw new CustomException(ErrorCode.PIN_MISMATCH);
+        }
+        p.resetPinFail();
+        return p;
     }
 }
