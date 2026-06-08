@@ -32,13 +32,9 @@ function LoginPage() {
           className="w-60 object-contain"
         />
 
-        <h2 className="mt-4 whitespace-pre-line text-[22px] font-bold leading-[1.35] tracking-[-0.06em] text-[#111111]">
-          모임 생성을 위해 로그인해주세요
+        <h2 className="mt-4 whitespace-pre-line text-[20px] font-bold leading-[1.35] tracking-[-0.06em] text-[#111111]">
+          모임을 만들려면 로그인이 필요해요
         </h2>
-
-        <p className="mt-3 whitespace-pre-line text-[15px] font-semibold leading-6 tracking-[-0.04em] text-[#777777]">
-          리더는 카카오 로그인 후 일정을 등록할 수 있어요
-        </p>
 
         <button
           type="button"
@@ -52,8 +48,10 @@ function LoginPage() {
           />
         </button>
 
-        <p className="mt-5 text-[13px] font-semibold tracking-[-0.04em] text-[#8d8d8d]">
-          로그인 시 다른 기기에서도 관리 가능해요
+        <p className="mt-5 text-[15px] font-semibold tracking-[-0.04em] text-[#8d8d8d]">
+          로그인하면 내가 만든 모임을 저장하고,
+          <br />
+          다른 기기에서도 이어서 관리할 수 있어요.
         </p>
 
         <div className="mt-8 h-px w-full bg-[#eeeeee]" />
