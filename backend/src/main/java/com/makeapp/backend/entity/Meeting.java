@@ -23,7 +23,7 @@ public class Meeting extends BaseEntity{
     @SequenceGenerator(name = "meeting_seq", sequenceName = "SEQ_MEETINGS", allocationSize = 50)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY) // 소셜 로그인 한 사람은 여러 개의 모임을 만들 수 있음
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 

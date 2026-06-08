@@ -40,7 +40,7 @@ dependencies {
 }
 
 bootRun {
-	def envFile = file('../.env')
+	def envFile = file('.env')
 	if (envFile.exists()) {
 		envFile.readLines().each { line ->
 			if (line && !line.startsWith('#') && line.contains('=')) {

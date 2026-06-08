@@ -55,7 +55,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // 1순위: Authorization 헤더 (Bearer 토큰 — Postman 테스트, 소셜 로그인)
         String bearer = request.getHeader("Authorization");
         if (bearer != null && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
+            return bearer.substring(7); // return되면 메서드 끝. 다음 if문 실행 안함.
         }
         // 2순위: HttpOnly Cookie (브라우저 자동 전송) - JS에서 접근 자체가 차단됨, HTTP 요청/응답으로만 전송
         if (request.getCookies() != null) {
