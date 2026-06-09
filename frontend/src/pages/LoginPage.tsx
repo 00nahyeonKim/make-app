@@ -4,13 +4,30 @@ import kakaoLoginButtonImage from "../assets/kakao-login-button.png";
 import Header from "../layouts/Header";
 import { ChevronLeft } from "lucide-react";
 
+const KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize";
+
 function LoginPage() {
   const navigate = useNavigate();
 
   const handleKakaoLogin = () => {
-    // 나중에 카카오 OAuth URL로 이동하도록 연결
-    console.log("카카오 로그인 클릭");
+    const kakaoRestApiKey = import.meta.env.VITE_KAKAO_REST_API_KEY;
+    const kakaoRedirectUri = import.meta.env.VITE_KAKAO_REDIRECT_URI;
+
+    if (!kakaoRestApiKey || !kakaoRedirectUri) {
+      alert("카카오 로그인 환경변수가 설정되지 않았습니다.");
+      return;
+    }
+
+    // 카카오 인증 URL 뒤에 붙을 query string을 안전하게 만들어줌
+    const params = new URLSearchParams({
+      client_id: kakaoRestApiKey,
+      redirect_uri: kakaoRedirectUri,
+      response_type: "code",
+    });
+    
+    window.location.href = `${KAKAO_AUTH_URL}?${params.toString()}`;
   };
+
   return (
     <section className="flex min-h-full flex-col">
       <Header

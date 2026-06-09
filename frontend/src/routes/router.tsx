@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router";
 import BasicLayout from "../layouts/BasicLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
+import KakaoCallbackPage from "../pages/KakaoCallbackPage";
 
 const MainPage = lazy(() => import("../pages/MainPage"));
 const LoginPage = lazy(() => import("../pages/LoginPage"));
@@ -28,6 +29,13 @@ const router = createBrowserRouter([
         element: withLoading(<LoginPage />, "로그인 화면을 준비하는 중이에요"),
       },
       {
+        path: "auth/callback",
+        element: withLoading(
+          <KakaoCallbackPage />,
+          "카카오 로그인을 확인하는 중이에요",
+        ),
+      },
+      {
         path: "meetings/new",
         element: withLoading(
           <MeetingCreatePage />,
@@ -38,10 +46,6 @@ const router = createBrowserRouter([
         path: "*",
         element: withLoading(<NotFoundPage />, "페이지를 확인하는 중이에요"),
       },
-      // {
-      //     path: 'about',
-      //     element: <Suspense fallback={<Loading />}><About /></Suspense>
-      // }
     ],
   },
 ]);
