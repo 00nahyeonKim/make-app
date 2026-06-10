@@ -28,7 +28,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         String token = resolveToken(request);
-        if (token != null) {
+        if (token != null && !token.isBlank()) {
             try {
                 jwtProvider.validate(token);
                 if (jwtProvider.isGuest(token)) {
