@@ -341,7 +341,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | -------- | ---------------------------------------------------------------------- |
 | Method   | `POST`                                                                 |
 | URI      | `/api/meetings`                                                        |
-| 인증     | Bearer (리더)                                                          |
+| 인증     | Cookie (리더)                                                          |
 | 요구사항 | FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-021, FR-023 |
 
 **Request Body**
@@ -370,10 +370,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | 필드                       | 타입    | 필수 | 제약                               |
 | -------------------------- | ------- | ---- | ---------------------------------- |
 | name                       | String  | ✅   | 1~50자                             |
-| expectedCount              | Integer | ❌   | 1~999                              |
+| expectedCount              | Integer | ❌   | 2~999                              |
 | candidateSlots             | Array   | ✅   | 최소 1개 이상                      |
 | candidateSlots[].slotDate  | Date    | ✅   | YYYY-MM-DD 형식, 과거 날짜 불가    |
-| candidateSlots[].startTime | Time    | ✅   | HH:mm 형식, 30분 단위 (00 또는 30) |
+| candidateSlots[].startTime | Time    | ✅   | HH:mm 형식                         |
 | candidateSlots[].endTime   | Time    | ✅   | startTime보다 늦어야 함            |
 
 **Response 201 Created**
@@ -481,11 +481,13 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 리더가 모임명이나 후보 슬롯을 수정한다.
 
+> ⚠️ 현재 구현 범위(Phase 0~8) 밖 — 추후 추가 예정(`백엔드 설명.md` 미수록).
+
 | 항목     | 값                   |
 | -------- | -------------------- |
 | Method   | `PUT`                |
 | URI      | `/api/meetings/{id}` |
-| 인증     | Bearer (리더)        |
+| 인증     | Cookie (리더)        |
 | 요구사항 | FR-022               |
 
 **Request Body**: 4.1과 동일
@@ -508,7 +510,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | -------- | ---------------------------- |
 | Method   | `POST`                       |
 | URI      | `/api/meetings/{id}/confirm` |
-| 인증     | Bearer (리더)                |
+| 인증     | Cookie (리더)                |
 | 요구사항 | FR-071                       |
 
 **Request Body**
@@ -527,7 +529,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | ---- | --------------------------- | ---------------------------- |
 | 403  | `FORBIDDEN`                 | 리더가 아님                  |
 | 409  | `MEETING_ALREADY_CONFIRMED` | 이미 확정됨                  |
-| 400  | `INVALID_REQUEST`           | 슬롯이 해당 모임 소속이 아님 |
+| 400  | `INVALID_SLOT`              | 슬롯이 해당 모임 소속이 아님 |
 
 ---
 
@@ -539,7 +541,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | ------ | --------------------------- |
 | Method | `POST`                      |
 | URI    | `/api/meetings/{id}/expire` |
-| 인증   | Bearer (리더)               |
+| 인증   | Cookie (리더)               |
 
 **Response 200 OK**
 
@@ -551,7 +553,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | -------- | --------------------------- |
 | Method   | `POST`                      |
 | URI      | `/api/meetings/{id}/cancel` |
-| 인증     | Bearer (리더)               |
+| 인증     | Cookie (리더)               |
 | 요구사항 | FR-071                      |
 
 **Response 204 No Content**
@@ -566,7 +568,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | -------- | ------------------ |
 | Method   | `GET`              |
 | URI      | `/api/my/meetings` |
-| 인증     | Bearer             |
+| 인증     | Cookie             |
 | 요구사항 | FR-005, FR-011     |
 
 **Query Parameter**
@@ -848,7 +850,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 {
   "success": true,
   "data": {
+    "meetingId": 1,
     "meetingName": "동아리 정기모임",
+    "status": "OPEN",
     "totalParticipants": 5,
     "submittedParticipants": 5,
     "confirmedSlot": null,
@@ -861,6 +865,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
         "availableCount": 5,
         "unavailableCount": 0,
         "recommendationLabel": "5명 중 5명 가능",
+        "durationMinutes": 30,
         "isTopRecommendation": true
       },
       {
@@ -871,6 +876,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
         "availableCount": 4,
         "unavailableCount": 1,
         "recommendationLabel": "5명 중 4명 가능",
+        "durationMinutes": 30,
         "isTopRecommendation": false
       }
     ]

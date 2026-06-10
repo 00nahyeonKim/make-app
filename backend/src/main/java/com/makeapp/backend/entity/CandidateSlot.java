@@ -44,16 +44,16 @@ public class CandidateSlot extends BaseEntity{
     private LocalDate slotDate;
 
     @Column(name = "start_time", nullable = false)
-    private LocalTime starTime;
+    private LocalTime startTime;
 
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
     @Builder
-    public CandidateSlot(Meeting meeting, LocalDate slotDate, LocalTime starTime, LocalTime endTime) {
+    public CandidateSlot(Meeting meeting, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {
         this.meeting = meeting;
         this.slotDate = slotDate;
-        this.starTime = starTime;
+        this.startTime = startTime;
         this.endTime = endTime;
     }
 }

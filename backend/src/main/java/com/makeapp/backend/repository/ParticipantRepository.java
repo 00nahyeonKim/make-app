@@ -15,4 +15,5 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
     Optional<Participant> findByMeetingAndDisplayName(Meeting meeting, String displayName);
     Optional<Participant> findByMeetingAndUser(Meeting meeting, User user); // 특정 미팅에서 특정 로그인 유저의 참가 정보 조회
     boolean existsByMeetingAndUser(Meeting meeting, User user); // 존재 여부만 확인하는 상황에선 findByMeetingAndUser 대신에 이걸 씀. 더 가볍고 명확하기 때문.
+    long countByMeeting(Meeting meeting); // 모임의 참가자 수(내 모임 목록 요약용)
 }
