@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.makeapp.backend.dto.request.MeetingCreateRequest;
 import com.makeapp.backend.dto.response.MeetingCreateResponse;
+import com.makeapp.backend.dto.response.MeetingDetailResponse;
 import com.makeapp.backend.entity.CandidateSlot;
 import com.makeapp.backend.entity.Meeting;
 import com.makeapp.backend.entity.User;
@@ -50,5 +51,21 @@ public class MeetingService {
                 .build()));
                 
         return new MeetingCreateResponse(meeting, FRONT_BASE_URL);
+    }
+
+    // 초대 토큰으로 모임 + 후보 슬롯 조회 (읽기 전용 트랜잭션)
+    @Transactional(readOnly = true)
+    public MeetingDetailResponse findByInviteToken(String inviteToken) {
+        Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
+        return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting));
+    }
+
+    // 결과 토큰으로 조회 (토직은 위와 동일, 토큰 종류만 다름)
+    @Transactional(readOnly = true)
+    public MeetingDetailResponse findByResultToken(String resultToken) {
+        Meeting meeting = meetingRepository.findByResultToken(resultToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
+        return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting));
     }
 }

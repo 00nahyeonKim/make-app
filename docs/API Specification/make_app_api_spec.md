@@ -619,11 +619,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 **Request Body**
 
-```json
-{
-  "type": "MEMBER"
-}
-```
+요청 본문 없음. 참가 유형(LEADER/MEMBER)과 표시 이름은 서버가 인증 정보(카카오 로그인)로 결정한다.
 
 **Response 201 Created**
 
