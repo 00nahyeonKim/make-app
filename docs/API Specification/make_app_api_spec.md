@@ -4,8 +4,8 @@
 
 | 항목      | 값                         |
 | --------- | -------------------------- |
-| 버전      | v0.3                       |
-| 작성일    | 2026-06-05                 |
+| 버전      | v0.4                       |
+| 작성일    | 2026-06-12                 |
 | Base URL  | `https://api.make-app.com` |
 | 응답 형식 | JSON (UTF-8)               |
 | 인증 방식 | JWT (HttpOnly Cookie)      |
@@ -114,7 +114,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | -------------- | ------ | ---------------------------------------------------- | ------------------------------ | ---------------------- |
 | Auth           | POST   | `/api/auth/kakao/callback`                           | 카카오 로그인 → Cookie 발급    | Public                 |
 | Auth           | POST   | `/api/auth/logout`                                   | 로그아웃 → Cookie 삭제         | Cookie                 |
-| Auth           | POST   | `/api/auth/refresh`                                  | 토큰 재발급 → Cookie 갱신      | Refresh Token (Body)   |
+| Auth           | POST   | `/api/auth/refresh`                                  | 토큰 재발급 → Cookie 갱신      | Cookie (refresh_token) |
 | Auth           | POST   | `/api/auth/guest/register`                           | 비회원 참가 등록 → 게스트 Cookie | Public                |
 | Auth           | POST   | `/api/auth/guest/login`                              | 비회원 재접속 → 게스트 Cookie  | Public                 |
 | Meetings       | POST   | `/api/meetings`                                      | 모임 생성                      | Cookie                 |
@@ -158,7 +158,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 **Response 200 OK**
 
-응답 헤더에 `Set-Cookie: access_token=eyJ...; HttpOnly; Path=/; SameSite=Lax; Max-Age=3600` 포함.
+응답 헤더에 두 개의 `Set-Cookie`가 포함된다 — `access_token=eyJ...; HttpOnly; Path=/; SameSite=Lax; Max-Age=3600`(1시간), `refresh_token=eyJ...; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`(7일).
 
 ```json
 {
@@ -195,7 +195,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 **Response 204 No Content**
 
-응답 헤더에 `Set-Cookie: access_token=; Max-Age=0` 포함 → 쿠키 삭제.
+응답 헤더에 `Set-Cookie: access_token=; Max-Age=0`과 `Set-Cookie: refresh_token=; Max-Age=0` 포함 → 두 쿠키 모두 삭제.
 
 ---
 
@@ -205,17 +205,13 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | ------ | -------------------- |
 | Method | `POST`               |
 | URI    | `/api/auth/refresh`  |
-| 인증   | Refresh Token (Body) |
+| 인증   | Cookie (refresh_token) |
 
-**Request Body**
-
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
-}
-```
+**Request Body** 없음 — `refresh_token` HttpOnly Cookie가 자동 전송되며 서버가 쿠키에서 읽어 검증한다. (Postman은 Cookie 탭에 `refresh_token`이 있으면 자동 전송)
 
 **Response 200 OK**
+
+응답 헤더에 갱신된 `Set-Cookie: access_token=...; HttpOnly` 포함.
 
 ```json
 {
@@ -443,7 +439,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | HTTP | code                | 설명                           |
 | ---- | ------------------- | ------------------------------ |
 | 404  | `MEETING_NOT_FOUND` | 잘못된 토큰                    |
-| 410  | `MEETING_EXPIRED`   | 마감된 모임 (status = EXPIRED) |
+
+> 마감된 모임도 조회는 `200 OK`로 응답하며 `status = EXPIRED`로 내려간다. 만료 안내 화면 분기는 프론트가 `status`로 처리한다. (410은 참가 등록 시에만 발생)
 
 ---
 
@@ -681,7 +678,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 }
 ```
 
-> 응답에는 `user_id`, `guest_token` 같은 민감 정보를 포함하지 않음.
+> 응답에는 `user_id`, `pin_hash` 같은 민감 정보를 포함하지 않음.
 
 ---
 
@@ -917,3 +914,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | v0.1 | 2026-05-20 | 초안 작성                                                               |
 | v0.2 | 2026-05-22 | HTTP method 수정                                                        |
 | v0.3 | 2026-06-05 | 비회원 인증 방식 변경 (X-Guest-Token → PIN 해시 + HttpOnly Cookie JWT), 게스트 등록/로그인 엔드포인트 추가 |
+| v0.4 | 2026-06-12 | 토큰 재발급을 refresh_token 쿠키 방식으로 명문화, 카카오 콜백 시 refresh_token 쿠키 발급·로그아웃 시 두 쿠키 삭제 반영, 초대 조회 410 규칙 삭제(만료는 status 필드로 표현) |

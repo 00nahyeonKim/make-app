@@ -20,7 +20,7 @@
 
 - DB: Oracle (Docker 컨테이너)
 - ORM: Spring Data JPA (+ 필요시 QueryDSL)
-- 채번 전략: `NUMBER GENERATED ALWAYS AS IDENTITY` (Oracle 12c+)
+- 채번 전략: 시퀀스 `SEQ_*` (INCREMENT BY 50) + JPA `@GeneratedValue(SEQUENCE)` — Flyway V10에서 IDENTITY 제거
 - 마이그레이션: Flyway
 
 ---
@@ -35,15 +35,15 @@
 | 4   | `PARTICIPANTS`    | 모임 참여자 (소셜+비회원) | `display_name`, `type`, `submitted_at`                |
 | 5   | `AVAILABILITIES`  | 슬롯별 가능/불가능 응답   | `status`                                              |
 
-> 모든 테이블에 공통으로 `created_at`, `updated_at`, `deleted_at` 컬럼이 존재함 (BaseTimeEntity 상속 구조)
+> 모든 테이블에 공통으로 `created_at`, `updated_at`, `deleted_at` 컬럼이 존재함 (BaseEntity 상속 구조)
 
 ---
 
 ## 3. ERD
 
-![ERD](ERD_img/make_app_erd_v5.jpg)
+ERD(현재 스키마 기준)는 Mermaid 소스로 관리한다: [make_app_erd_v5.md](ERD_img/make_app_erd_v5.md)
 
-> Mermaid 소스: [make_app_erd_v5.md](ERD_img/make_app_erd_v5.md)
+> 구버전 이미지 [make_app_erd_v4.jpg](ERD_img/make_app_erd_v4.jpg)는 PIN 인증 반영 전(`guest_token` 시절)이라 참고용이다. v5 이미지 export는 후속 과제.
 
 ---
 
@@ -55,7 +55,7 @@
 
 | 컬럼         | 자료형       | NULL     | 키/제약 | 설명                                                     |
 | ------------ | ------------ | -------- | ------- | -------------------------------------------------------- |
-| `id`         | NUMBER(19,0) | NOT NULL | PK      | 시스템 내부 사용자 식별자. IDENTITY 자동 채번            |
+| `id`         | NUMBER(19,0) | NOT NULL | PK      | 시스템 내부 사용자 식별자. 시퀀스(`SEQ_*`) 채번            |
 | `kakao_id`   | VARCHAR2(50) | NOT NULL | UNIQUE  | 카카오 OAuth 응답의 회원번호. 로그인 시 이 컬럼으로 조회 |
 | `name`       | VARCHAR2(50) | NOT NULL |         | 카카오에서 받아온 사용자 이름                            |
 | `created_at` | TIMESTAMP    | NOT NULL |         | 최초 가입 시각 (JPA `@CreatedDate`)                      |
@@ -76,7 +76,7 @@
 
 | 컬럼                | 자료형       | NULL     | 키/제약                 | 설명                                                  |
 | ------------------- | ------------ | -------- | ----------------------- | ----------------------------------------------------- |
-| `id`                | NUMBER(19,0) | NOT NULL | PK                      | 모임 식별자. IDENTITY 자동 채번                       |
+| `id`                | NUMBER(19,0) | NOT NULL | PK                      | 모임 식별자. 시퀀스(`SEQ_*`) 채번                       |
 | `owner_id`          | NUMBER(19,0) | NOT NULL | FK → USERS.id           | 모임을 만든 리더의 사용자 ID. 리더 권한 검증의 기준   |
 | `name`              | VARCHAR2(50) | NOT NULL |                         | 모임명                                                |
 | `expected_count`    | NUMBER(3,0)  | NULL     |                         | 예상 참여 인원. 입력하지 않을 수 있음                 |
@@ -111,7 +111,7 @@ DRAFT ──→ OPEN ──→ CONFIRMED   (방장이 최종 일정 확정)
 
 | 컬럼         | 자료형       | NULL     | 키/제약          | 설명                                 |
 | ------------ | ------------ | -------- | ---------------- | ------------------------------------ |
-| `id`         | NUMBER(19,0) | NOT NULL | PK               | 슬롯 식별자. IDENTITY 자동 채번      |
+| `id`         | NUMBER(19,0) | NOT NULL | PK               | 슬롯 식별자. 시퀀스(`SEQ_*`) 채번      |
 | `meeting_id` | NUMBER(19,0) | NOT NULL | FK → MEETINGS.id | 소속 모임                            |
 | `slot_date`  | DATE         | NOT NULL |                  | 후보 날짜. JPA `LocalDate` 매핑      |
 | `start_time` | TIMESTAMP    | NOT NULL |                  | 슬롯 시작 시각. JPA `LocalTime` 매핑 |
@@ -138,7 +138,7 @@ DRAFT ──→ OPEN ──→ CONFIRMED   (방장이 최종 일정 확정)
 
 | 컬럼              | 자료형        | NULL     | 키/제약          | 설명                                          |
 | ----------------- | ------------- | -------- | ---------------- | --------------------------------------------- |
-| `id`              | NUMBER(19,0)  | NOT NULL | PK               | 참여자 식별자. IDENTITY 자동 채번             |
+| `id`              | NUMBER(19,0)  | NOT NULL | PK               | 참여자 식별자. 시퀀스(`SEQ_*`) 채번             |
 | `meeting_id`      | NUMBER(19,0)  | NOT NULL | FK → MEETINGS.id | 소속 모임                                     |
 | `user_id`         | NUMBER(19,0)  | NULL     | FK → USERS.id    | 소셜 로그인 시 채워짐                         |
 | `pin_hash`        | VARCHAR2(255) | NULL     |                  | 비회원 PIN BCrypt 해시. 소셜 사용자는 NULL    |
@@ -182,7 +182,7 @@ UNIQUE (meeting_id, display_name)
 
 | 컬럼                | 자료형       | NULL     | 키/제약                 | 설명                                   |
 | ------------------- | ------------ | -------- | ----------------------- | -------------------------------------- |
-| `id`                | NUMBER(19,0) | NOT NULL | PK                      | 응답 식별자. IDENTITY 자동 채번        |
+| `id`                | NUMBER(19,0) | NOT NULL | PK                      | 응답 식별자. 시퀀스(`SEQ_*`) 채번        |
 | `participant_id`    | NUMBER(19,0) | NOT NULL | FK → PARTICIPANTS.id    | 응답한 참여자                          |
 | `candidate_slot_id` | NUMBER(19,0) | NOT NULL | FK → CANDIDATE_SLOTS.id | 응답 대상 슬롯                         |
 | `status`            | VARCHAR2(20) | NOT NULL |                         | 응답 상태: `AVAILABLE` / `UNAVAILABLE` |
@@ -276,10 +276,11 @@ SELECT COUNT(*) FROM participants
 
 ```java
 @Entity
-@SQLDelete(sql = "UPDATE meetings SET deleted_at = SYSTIMESTAMP WHERE id = ?")
-@SQLRestriction("deleted_at IS NULL")
-public class Meeting extends BaseTimeEntity { ... }
+@SQLRestriction("deleted_at IS NULL")   // 조회 시 deleted_at IS NULL 자동 적용
+public class Meeting extends BaseEntity { ... }
 ```
+
+삭제는 실제 `DELETE` 대신 `BaseEntity.delete()`를 호출해 `deleted_at`만 채운다(`@SQLDelete` 미사용).
 
 - 모든 SELECT 쿼리에 자동으로 `WHERE deleted_at IS NULL` 적용
 - 부모(`MEETINGS`)가 소프트 삭제되면 자식(`CANDIDATE_SLOTS`, `PARTICIPANTS`, `AVAILABILITIES`)도 부모를 통한 조회에서 자동으로 가려짐
@@ -379,7 +380,7 @@ SELECT m.*
 
 > Oracle에는 `BIGINT`나 `DATETIME` 같은 타입이 없음. `NUMBER`와 `TIMESTAMP`로 통일.
 
-PK 채번은 `NUMBER GENERATED ALWAYS AS IDENTITY`(Oracle 12c+)를 사용하며, JPA에서는 `@GeneratedValue(strategy = GenerationType.IDENTITY)`와 자연스럽게 매핑됨.
+PK 채번은 시퀀스 `SEQ_*`(INCREMENT BY 50)를 사용하며(Flyway V10에서 IDENTITY 제거), JPA에서는 `@GeneratedValue(strategy = GenerationType.SEQUENCE)` + `@SequenceGenerator(allocationSize = 50)`와 매핑됨.
 
 ---
 
@@ -412,3 +413,4 @@ V11__replace_guest_token_with_pin.sql   -- guest_token → pin_hash/pin_fail_cou
 | v3   | 2026-05-20 | `MEETINGS.expires_at` 제거 (status로 만료 관리)                             |
 | v4   | 2026-05-22 | 5개 테이블 전체에 `deleted_at` 추가 (소프트 삭제 일관 적용), `CANDIDATE_SLOTS.updated_at` 추가 |
 | v5   | 2026-06-05 | `PARTICIPANTS.guest_token` 삭제 → `pin_hash` / `pin_fail_count` / `pin_locked_until` 추가 (비회원 인증 방식 변경: 랜덤 토큰 → 닉네임+PIN 해시) |
+| v6   | 2026-06-12 | PK 채번을 IDENTITY → 시퀀스(`SEQ_*`, INCREMENT BY 50)로 전환 (Flyway V10), 문서 내 IDENTITY 표기 일괄 갱신 |

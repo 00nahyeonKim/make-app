@@ -41,7 +41,7 @@ public class ParticipantService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
         if (participantRepository.existsByMeetingAndUser(meeting, user)) {
-            throw new CustomException(ErrorCode.DUPLICATED_PARTICIPATION); // 이미 참가했으면 중복 차단
+            throw new CustomException(ErrorCode.DUPLICATE_PARTICIPATION); // 이미 참가했으면 중복 차단
         }
 
         boolean isOwner = meeting.getOwner().getId().equals(userId);    // 주최자가 직접 참가하는 경우
