@@ -1,5 +1,9 @@
 package com.makeapp.backend.service;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,4 +66,24 @@ public class ParticipantService {
                 .count();
         return count == 0 ? baseName : baseName + " (" + (count + 1) + ")";
     }
+
+    // 모임의 참가자 전체 목록 조회 (참가자 배열 + 집계: 총원/제출완료 수)
+    @Transactional(readOnly = true)
+    public Map<String, Object> findAll(String inviteToken) {
+        Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
+        // ParticipantResponse::of는 p -> ParticipantResponse.of(p)와 같은 의미(메서드 참조).
+        List<ParticipantResponse> participants = participantRepository.findByMeeting(meeting).stream().map(ParticipantResponse::of).toList(); // map()은 Stream의 기능이라, map()을 쓰려면 먼저 stream()으로 스트림을 만들어야 함
+        Long submittedCount = participants.stream().filter(ParticipantResponse::isSubmitted).count(); // filter()와 count()도 Stram의 기능이라, 리스트가 된 participants를 가공하려면 새로 stream()으로 펼쳐야 함
+
+        Map<String, Object> response = new LinkedHashMap<>();   // 키 순서 유지
+        response.put("participants", participants);
+        response.put("totalCount", participants.size()); // 이 모임의 총 참가자 수를 응답하기 위한 값
+        response.put("submittedCount", submittedCount);
+        
+        return response;
+    }
+
+    // 내 참가 정보 조회 - 본인 정보 + 본인이 낸 가용 응답까지 반환 (재접속 시 복원용) 2481라인부터...
+
 }
