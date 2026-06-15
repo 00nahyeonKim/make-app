@@ -2,12 +2,13 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router";
 import BasicLayout from "../layouts/BasicLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
-import KakaoCallbackPage from "../pages/KakaoCallbackPage";
+import ProtectedRoute from "./ProtectedRoute";
 
 const MainPage = lazy(() => import("../pages/MainPage"));
 const LoginPage = lazy(() => import("../pages/LoginPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 const MeetingCreatePage = lazy(() => import("../pages/MeetingCreatePage"));
+const KakaoCallbackPage = lazy(() => import("../pages/KakaoCallbackPage"));
 
 const withLoading = (children: ReactNode, message?: string) => (
   <Suspense fallback={<LoadingSpinner fullScreen message={message} />}>
@@ -38,7 +39,9 @@ const router = createBrowserRouter([
       {
         path: "meetings/new",
         element: withLoading(
-          <MeetingCreatePage />,
+          <ProtectedRoute>
+            <MeetingCreatePage />
+          </ProtectedRoute>,
           "일정 만들기 화면을 준비하는 중이에요",
         ),
       },
