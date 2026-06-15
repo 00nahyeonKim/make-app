@@ -1,49 +1,52 @@
-import type { ApiResponse } from "../types/api";
-import type { AuthLoginResponse, KakaoCallbackRequest } from "../types/auth";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import type {
+  AuthLoginResponse,
+  KakaoCallbackRequest,
+  RefreshAccessTokenResponse,
+} from "../types/auth";
+import { request } from "./httpClient";
 
 /**
  * 카카오 로그인 콜백 API
+ *
+ * 카카오가 발급한 인가 코드를 백엔드에 전달
+ * 백엔드는 로그인 처리 후 access_token과 refresh_token을
+ * HttpOnly Cookie로 발급함
  */
-export async function loginWithKakao(
-    code: string,
-): Promise<AuthLoginResponse> {
-    // 백엔드에 보낼 요청 body를 만듬
-    const requestBody: KakaoCallbackRequest = {
-        code,
-    };
+export function loginWithKakao(code: string): Promise<AuthLoginResponse> {
+  // 백엔드에 보낼 요청 body를 만듬
+  const requestBody: KakaoCallbackRequest = {
+    code,
+  };
+  return request<AuthLoginResponse>("/api/auth/kakao/callback", {
+    method: "POST",
+    body: requestBody,
+  });
+}
+/**
+ * Access Token 재발급 API
+ *
+ * refresh_token은 HttpOnly Cookie로 저장되어 있으므로
+ * 프런트엔드에서 직접 읽거나 request body에 넣지 않음
+ *
+ * 브라우저가 request()의 credentials: "include" 설정을 통해
+ * refresh_token Cookie를 자동으로 백엔드에 전달
+ */
+export function refreshAccessToken(): Promise<RefreshAccessTokenResponse> {
+  return request<RefreshAccessTokenResponse>("/api/auth/refresh", {
+    method: "POST",
+  });
+}
 
-    // 백엔드 카카오 로그인 콜백 API를 호출
-    const response = await fetch(`${API_BASE_URL}/api/auth/kakao/callback`, {
-        method: "POST",
-
-        // 요청 body가 JSON 형식이라는 것을 백엔드에 알림
-        headers: {
-            "Content-Type": "application/json",
-        },
-
-        // HttpOnly Cookie를 주고받기 위해 필요
-        credentials: "include",
-
-        // JavaScript 객체를 JSON 문자열로 바꿔서 보냄
-        body: JSON.stringify(requestBody),
-    });
-
-    // 백엔드 응답 JSON을 JavaScript 객체로 변환하고 타입을 지정
-    const result = (await response.json()) as ApiResponse<AuthLoginResponse>;
-
-    // HTTP 상태 코드가 실패이거나, 응답 body의 success가 false이면 에러 처리
-    if (!response.ok || !result.success) {
-        // 백엔드가 error.message를 내려줬으면 그 메시지 사용하고, 아니면 기본 에러 메시지 사용
-        const message = !result.success
-            ? result.error.message
-            : "카카오 로그인에 실패했습니다.";
-
-        // 이 함수를 호출한 KakaoCallbackPage의 catch로 에러를 넘김
-        throw new Error(message);
-    }
-
-    // 성공 응답의 data만 반환
-    return result.data;
+/**
+ * 로그아웃 API
+ *
+ * 백엔드는 access_token과 refresh_token Cookie를
+ * Max-Age=0으로 내려 브라우저에서 삭제
+ *
+ * 성공 응답은 204 No Content이므로 반환 데이터가 없음
+ */
+export function logout(): Promise<void> {
+  return request<void>("/api/auth/logout", {
+    method: "POST",
+  });
 }

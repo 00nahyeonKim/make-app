@@ -3,6 +3,7 @@ import type { ChangeEvent, SubmitEventHandler } from "react";
 import { useNavigate } from "react-router";
 import Button from "../components/Button";
 import { Minus, Plus } from "lucide-react";
+import Header from "../layouts/Header";
 
 const MAX_MEETING_NAME_LENGTH = 10;
 const MIN_PARTICIPANT_COUNT = 1;
@@ -66,86 +67,95 @@ function MeetingCreatePage() {
 
   return (
     <section className="flex min-h-full flex-col">
-      <div className="flex h-62.5 shrink-0 items-center justify-center text-[#f59a58] text-[52px] font-black">
-        픽타임
-      </div>
+      <Header title="일정 만들기" showMenu />
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-1 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7">
-        <div className="flex-1">
-          <h1 className="text-[24px] font-black tracking-tighter text-[#2d2d2d]">
-            어떤 약속인가요?
-          </h1>
-
-          <div className="mt-8">
-            <label
-              htmlFor="meetingName"
-              className="block text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
-              약속 이름을 입력하세요
-              <span className="text-[#fc3a3a]">*</span>
-            </label>
-
-            <input
-              id="meetingName"
-              value={meetingName}
-              onChange={handleMeetingNameChange}
-              placeholder="최대 10자 입력 가능"
-              className="mt-2 h-10 w-full border border-[#cfcfcf] px-4 text-sm font-semibold text-[#333333] outline-none placeholder:text-[#b8b8b8] focus:border-[#f59a58]"
-            />
-          </div>
-
-          <div className="mt-6">
-            <p className="text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
-              약속 참여 인원을 입력하세요
-            </p>
-
-            <div
-              className={[
-                "mt-3 flex h-10 items-center border border-[#cfcfcf] bg-white",
-                isUndecided ? "opacity-50" : "",
-              ].join(" ")}>
-              <button
-                type="button"
-                onClick={handleDecrease}
-                disabled={
-                  isUndecided || participantCount <= MIN_PARTICIPANT_COUNT
-                }
-                className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
-                <Minus size={24} strokeWidth={2} />
-              </button>
-
-              <div className="flex-1 text-center text-lg font-bold text-[#555555]">
-                {participantCount}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleIncrease}
-                disabled={
-                  isUndecided || participantCount >= MAX_PARTICIPANT_COUNT
-                }
-                className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
-                <Plus size={24} strokeWidth={2} />
-              </button>
-            </div>
-
-            <label className="mt-2 flex h-8 cursor-pointer items-center rounded border border-[#e5e5e5] bg-white px-2 text-[13px] font-semibold tracking-[-0.03em] text-[#9b9b9b]">
-              <input
-                type="checkbox"
-                checked={isUndecided}
-                onChange={handleUndecidedChange}
-                className="mr-1.5 h-3.5 w-3.5 accent-[#bdbdbd]"
-              />
-              아직 안정했어요
-            </label>
-          </div>
+      <div className="flex flex-1 flex-col">
+        <div className="flex min-h-40 max-h-64 flex-4 shrink-0 items-center justify-center text-[#f59a58] text-[52px] font-black">
+          픽타임
         </div>
 
-        <Button type="submit" fullWidth>
-          다음
-        </Button>
-      </form>
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-105 flex-6 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7"
+        >
+          <div className="flex-1">
+            <h1 className="text-[24px] font-black tracking-tighter text-[#2d2d2d]">
+              어떤 약속인가요?
+            </h1>
+
+            <div className="mt-8">
+              <label
+                htmlFor="meetingName"
+                className="block text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]"
+              >
+                약속 이름을 입력하세요
+                <span className="text-[#fc3a3a]">*</span>
+              </label>
+
+              <input
+                id="meetingName"
+                value={meetingName}
+                onChange={handleMeetingNameChange}
+                placeholder="최대 10자 입력 가능"
+                className="mt-2 h-10 w-full border border-[#cfcfcf] px-4 text-sm font-semibold text-[#333333] outline-none placeholder:text-[#b8b8b8] focus:border-[#f59a58]"
+              />
+            </div>
+
+            <div className="mt-6">
+              <p className="text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
+                약속 참여 인원을 입력하세요
+              </p>
+
+              <div
+                className={[
+                  "mt-3 flex h-10 items-center border border-[#cfcfcf] bg-white",
+                  isUndecided ? "opacity-50" : "",
+                ].join(" ")}
+              >
+                <button
+                  type="button"
+                  onClick={handleDecrease}
+                  disabled={
+                    isUndecided || participantCount <= MIN_PARTICIPANT_COUNT
+                  }
+                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
+                >
+                  <Minus size={24} strokeWidth={2} />
+                </button>
+
+                <div className="flex-1 text-center text-lg font-bold text-[#555555]">
+                  {participantCount}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleIncrease}
+                  disabled={
+                    isUndecided || participantCount >= MAX_PARTICIPANT_COUNT
+                  }
+                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
+                >
+                  <Plus size={24} strokeWidth={2} />
+                </button>
+              </div>
+
+              <label className="mt-2 flex h-8 cursor-pointer items-center rounded border border-[#e5e5e5] bg-white px-2 text-[13px] font-semibold tracking-[-0.03em] text-[#9b9b9b]">
+                <input
+                  type="checkbox"
+                  checked={isUndecided}
+                  onChange={handleUndecidedChange}
+                  className="mr-1.5 h-3.5 w-3.5 accent-[#bdbdbd]"
+                />
+                아직 안정했어요
+              </label>
+            </div>
+          </div>
+
+          <Button type="submit" fullWidth>
+            다음
+          </Button>
+        </form>
+      </div>
     </section>
   );
 }
