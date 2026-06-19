@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,6 +85,47 @@ public class ParticipantService {
         return response;
     }
 
-    // 내 참가 정보 조회 - 본인 정보 + 본인이 낸 가용 응답까지 반환 (재접속 시 복원용) 2481라인부터...
+    // 내 참가 정보 조회 - 본인 정보 + 본인이 낸 가용 응답까지 반환 (재접속 시 복원용)
+    @Transactional(readOnly = true)
+    public Map<String, Object> findMe(String inviteToken, Authentication auth) {
+        Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
+        if (auth == null) throw new CustomException(ErrorCode.UNAUTHORIZED);
+
+        // 권한 목록에 ROLE_GUEST가 있으면 게스트 토큰
+        boolean isGuest = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_GUEST"));
+
+        Participant me;
+        if (isGuest) {
+            Long participantId = (Long) auth.getPrincipal(); // 게스트는 principal이 participantId
+            me = participantRepository.findById(participantId)
+                    .filter(p -> p.getMeeting().getId().equals(meeting.getId())) // 이 모임 소속인지 확인
+                    .orElseThrow(() -> new CustomException(ErrorCode.PARTICIPANT_NOT_FOUND));
+        } else {
+            Long userId = (Long) auth.getPrincipal(); // 회원은 principal이 userId
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
+            me = participantRepository.findByMeetingAndUser(meeting, user)
+                    .orElseThrow(() -> new CustomException(ErrorCode.PARTICIPANT_NOT_FOUND));
+        }
+
+        // 본인이 낸 슬롯별 가용 응답 (재접속 시 화면 복원용)
+        List<Map<String, Object>> availabilities = availabilityRepository.findByParticipant(me).stream()
+                .map(a -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("candidateSlotId", a.getCandidateSlot().getId());
+                    item.put("status", a.getStatus().name());
+                    return item;
+                }).toList();
+
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("id", me.getId());
+                response.put("displayName", me.getDisplayName());
+                response.put("type", me.getType().name());
+                response.put("submittedAt", me.getSubmittedAt());
+                response.put("availabilities", availabilities);
+                return response;
+    }
 
 }
