@@ -27,7 +27,7 @@ public class Meeting extends BaseEntity{
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 20)
     private String name;
 
     @Column(name = "expected_count")

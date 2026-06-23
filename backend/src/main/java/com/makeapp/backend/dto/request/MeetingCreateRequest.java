@@ -21,11 +21,11 @@ import lombok.NoArgsConstructor;
 public class MeetingCreateRequest {
 
     @NotBlank(message = "모임 이름을 입력해주세요.")
-    @Size(max = 50, message = "모임 이름은 최대 50자입니다.")
+    @Size(max = 20, message = "모임 이름은 최대 20자입니다.")
     private String name;
 
     @Min(value = 2, message = "참가 인원은 최소 2명 이상이어야 합니다.")
-    @Max(value = 999, message = "참가 인원은 최대 999명입니다.")
+    @Max(value = 99, message = "참가 인원은 최대 99명입니다.")
     private Integer expectedCount;
 
     @NotEmpty(message = "후보 슬롯을 1개 이상 입력해주세요.")

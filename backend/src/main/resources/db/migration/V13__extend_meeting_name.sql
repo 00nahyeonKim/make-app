@@ -1,0 +1,1 @@
+ALTER TABLE meetings MODIFY name VARCHAR2(20 CHAR);
