@@ -4,26 +4,31 @@ import { useNavigate } from "react-router";
 import Button from "../components/Button";
 import { Minus, Plus } from "lucide-react";
 import Header from "../layouts/Header";
+import { useMeetingDraftStore } from "../stores/meetingDraftStore";
 
-const MAX_MEETING_NAME_LENGTH = 10;
-const MIN_PARTICIPANT_COUNT = 1;
+const MAX_MEETING_NAME_LENGTH = 20;
+const MIN_PARTICIPANT_COUNT = 2;
 const MAX_PARTICIPANT_COUNT = 99;
 
 function MeetingCreatePage() {
   const navigate = useNavigate();
 
+  const setBasicInfo = useMeetingDraftStore((state) => state.setBasicInfo);
+
   const [meetingName, setMeetingName] = useState("");
-  const [participantCount, setParticipantCount] = useState(1);
+  const [meetingNameError, setMeetingNameError] = useState("");
+  const [participantCount, setParticipantCount] = useState(2);
   const [isUndecided, setIsUndecided] = useState(false);
 
   // 약속 이름 input 값이 바뀔 때 실행되는 함수
   const handleMeetingNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
 
-    if (value.length > MAX_MEETING_NAME_LENGTH) {
-      return;
-    }
     setMeetingName(value);
+
+    if (value.trim()) {
+      setMeetingNameError("");
+    }
   };
 
   // 참여 인원 감소 버튼 클릭시 실행되는 함수
@@ -58,10 +63,20 @@ function MeetingCreatePage() {
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
 
-    console.log({
-      meetingName,
+    const trimmedMeetingName = meetingName.trim();
+
+    if (!trimmedMeetingName) {
+      setMeetingNameError("약속 이름을 입력해주세요.");
+      return;
+    }
+    setMeetingNameError("");
+
+    // 입력값을 전역 스토어에 저장 -> 다음 페이지에서 꺼내쓸수있게
+    setBasicInfo({
+      name: trimmedMeetingName,
       expectedCount: isUndecided ? null : participantCount,
     });
+
     navigate("/meetings/new/slots");
   };
 
@@ -96,9 +111,37 @@ function MeetingCreatePage() {
                 id="meetingName"
                 value={meetingName}
                 onChange={handleMeetingNameChange}
-                placeholder="최대 10자 입력 가능"
-                className="mt-2 h-10 w-full border border-[#cfcfcf] px-4 text-sm font-semibold text-[#333333] outline-none placeholder:text-[#b8b8b8] focus:border-[#f59a58]"
+                maxLength={MAX_MEETING_NAME_LENGTH}
+                placeholder={`최대 ${MAX_MEETING_NAME_LENGTH}자 입력 가능`}
+                aria-invalid={meetingNameError ? true : undefined}
+                aria-describedby={
+                  meetingNameError ? "meetingNameError" : undefined
+                }
+                className={[
+                  "mt-2 h-10 w-full border px-4 text-sm font-semibold",
+                  "text-[#333333] outline-none placeholder:text-[#b8b8b8]",
+                  meetingNameError
+                    ? "border-[#fc3a3a]"
+                    : "border-[#cfcfcf] focus:border-[#f59a58]",
+                ].join(" ")}
               />
+
+              <div className="mt-1 flex items-center justify-between">
+                <div>
+                  {meetingNameError && (
+                    <p
+                      id="meetingNameError"
+                      className="text-xs font-semibold text-[#fc3a3a]"
+                    >
+                      {meetingNameError}
+                    </p>
+                  )}
+                </div>
+                {/* 글자 수 표시 */}
+                <span className="text-xs text-[#a5a5a5]">
+                  {meetingName.length}/{MAX_MEETING_NAME_LENGTH}
+                </span>
+              </div>
             </div>
 
             <div className="mt-6">
@@ -146,7 +189,7 @@ function MeetingCreatePage() {
                   onChange={handleUndecidedChange}
                   className="mr-1.5 h-3.5 w-3.5 accent-[#bdbdbd]"
                 />
-                아직 안정했어요
+                아직 안 정했어요
               </label>
             </div>
           </div>
