@@ -5,14 +5,9 @@ import type { DraftSlot, MeetingDraft } from "../types/meeting";
 type MeetingDraftState = MeetingDraft & {
   // 1페이지(모임명,인원)에서 받은 기본 정보 저장
   setBasicInfo: (info: { name: string; expectedCount: number | null }) => void;
-  // 슬롯 1개 추가
-  addSlot: (slot: DraftSlot) => void;
-  // 특정 id의 슬롯 삭제
-  removeSlot: (id: string) => void;
-  // 특정 id 슬롯에서 한 필드만 수정 (날짜/시작/종료시간 중 하나)
-  updateSlot: (id: string, patch: Partial<Omit<DraftSlot, "id">>) => void;
-  // 전부 초기화(모임 생성 끝내거나 처음부터 다시 시작)
-  reset: () => void;
+  addSlot: (slot: DraftSlot) => void; // 슬롯 1개 추가
+  removeSlot: (id: string) => void; // 특정 id의 슬롯 삭제
+  reset: () => void; // 전부 초기화
 };
 
 // 처음 상태값 - 나중에 reset에서도 재사용
@@ -45,15 +40,6 @@ export const useMeetingDraftStore = create<MeetingDraftState>((set) => ({
   removeSlot: (id) => {
     set((state) => ({
       slots: state.slots.filter((slot) => slot.id !== id),
-    }));
-  },
-
-  // 수정: 대상 슬롯만 patch를 덮어쓰고 나머지는 그대로 둔 새 배열
-  updateSlot: (id, patch) => {
-    set((state) => ({
-      slots: state.slots.map((slot) =>
-        slot.id === id ? { ...slot, ...patch } : slot,
-      ),
     }));
   },
 

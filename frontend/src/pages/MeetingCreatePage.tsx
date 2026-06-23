@@ -71,7 +71,7 @@ function MeetingCreatePage() {
     }
     setMeetingNameError("");
 
-    // 입력값을 전역 스토어에 저장 -> 다음 페이지에서 꺼내쓸수있게
+    // 입력값을 전역 스토어에 저장 -> 다음(슬롯) 페이지에서 꺼내쓸수있게
     setBasicInfo({
       name: trimmedMeetingName,
       expectedCount: isUndecided ? null : participantCount,
@@ -91,8 +91,7 @@ function MeetingCreatePage() {
 
         <form
           onSubmit={handleSubmit}
-          className="flex min-h-105 flex-6 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7"
-        >
+          className="flex min-h-105 flex-6 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7">
           <div className="flex-1">
             <h1 className="text-[24px] font-black tracking-tighter text-[#2d2d2d]">
               어떤 약속인가요?
@@ -101,8 +100,7 @@ function MeetingCreatePage() {
             <div className="mt-8">
               <label
                 htmlFor="meetingName"
-                className="block text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]"
-              >
+                className="block text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
                 약속 이름을 입력하세요
                 <span className="text-[#fc3a3a]">*</span>
               </label>
@@ -131,8 +129,7 @@ function MeetingCreatePage() {
                   {meetingNameError && (
                     <p
                       id="meetingNameError"
-                      className="text-xs font-semibold text-[#fc3a3a]"
-                    >
+                      className="text-xs font-semibold text-[#fc3a3a]">
                       {meetingNameError}
                     </p>
                   )}
@@ -153,16 +150,14 @@ function MeetingCreatePage() {
                 className={[
                   "mt-3 flex h-10 items-center border border-[#cfcfcf] bg-white",
                   isUndecided ? "opacity-50" : "",
-                ].join(" ")}
-              >
+                ].join(" ")}>
                 <button
                   type="button"
                   onClick={handleDecrease}
                   disabled={
                     isUndecided || participantCount <= MIN_PARTICIPANT_COUNT
                   }
-                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
-                >
+                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
                   <Minus size={24} strokeWidth={2} />
                 </button>
 
@@ -176,8 +171,7 @@ function MeetingCreatePage() {
                   disabled={
                     isUndecided || participantCount >= MAX_PARTICIPANT_COUNT
                   }
-                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
-                >
+                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
                   <Plus size={24} strokeWidth={2} />
                 </button>
               </div>
