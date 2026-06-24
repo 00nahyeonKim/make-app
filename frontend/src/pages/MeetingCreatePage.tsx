@@ -85,13 +85,18 @@ function MeetingCreatePage() {
       <Header title="일정 만들기" showMenu />
 
       <div className="flex flex-1 flex-col">
-        <div className="flex min-h-40 max-h-64 flex-4 shrink-0 items-center justify-center text-[#f59a58] text-[52px] font-black">
-          픽타임
+        <div className="flex min-h-40 max-h-64 flex-4 shrink-0 items-center justify-center">
+          <img
+            src="/static/main_logo.png"
+            alt="픽타임"
+            className="h-auto w-3/5 max-w-110 max-h-full object-contain"
+          />
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="flex min-h-105 flex-6 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7">
+          className="flex min-h-105 flex-6 flex-col rounded-t-4xl bg-white px-7 pb-6 pt-7"
+        >
           <div className="flex-1">
             <h1 className="text-[24px] font-black tracking-tighter text-[#2d2d2d]">
               어떤 약속인가요?
@@ -100,7 +105,8 @@ function MeetingCreatePage() {
             <div className="mt-8">
               <label
                 htmlFor="meetingName"
-                className="block text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]">
+                className="block text-[15px] font-bold tracking-[-0.04em] text-[#4a4a4a]"
+              >
                 약속 이름을 입력하세요
                 <span className="text-[#fc3a3a]">*</span>
               </label>
@@ -129,7 +135,8 @@ function MeetingCreatePage() {
                   {meetingNameError && (
                     <p
                       id="meetingNameError"
-                      className="text-xs font-semibold text-[#fc3a3a]">
+                      className="text-xs font-semibold text-[#fc3a3a]"
+                    >
                       {meetingNameError}
                     </p>
                   )}
@@ -150,14 +157,16 @@ function MeetingCreatePage() {
                 className={[
                   "mt-3 flex h-10 items-center border border-[#cfcfcf] bg-white",
                   isUndecided ? "opacity-50" : "",
-                ].join(" ")}>
+                ].join(" ")}
+              >
                 <button
                   type="button"
                   onClick={handleDecrease}
                   disabled={
                     isUndecided || participantCount <= MIN_PARTICIPANT_COUNT
                   }
-                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
+                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
+                >
                   <Minus size={24} strokeWidth={2} />
                 </button>
 
@@ -171,7 +180,8 @@ function MeetingCreatePage() {
                   disabled={
                     isUndecided || participantCount >= MAX_PARTICIPANT_COUNT
                   }
-                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]">
+                  className="flex h-full w-16 items-center justify-center text-2xl font-light text-[#555555] disabled:text-[#cfcfcf]"
+                >
                   <Plus size={24} strokeWidth={2} />
                 </button>
               </div>

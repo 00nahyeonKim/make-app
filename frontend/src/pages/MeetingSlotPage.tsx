@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router";
 import { useMeetingDraftStore } from "../stores/meetingDraftStore";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Header from "../layouts/Header";
 import {
   CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Plus,
   Trash2,
 } from "lucide-react";
 import Button from "../components/Button";
@@ -53,29 +54,47 @@ function formatKoreanDate(dateStr: string): string {
 const TIME_OPTIONS = buildTimeOptions();
 
 type TimeColumnProps = {
-  label: string; // "부터" 또는 "까지"
   value: string; // 현재 선택된 시간
-  onSelect: (time: string) => void; // 시간을 고르면 부로에게 알림
+  onSelect: (time: string) => void; // 시간을 고르면 부모에게 알림
 };
 
-function TimeColumn({ label, value, onSelect }: TimeColumnProps) {
+function TimeColumn({ value, onSelect }: TimeColumnProps) {
+  const containerRef = useRef<HTMLDivElement>(null); // 스크롤되는 바깥 박스
+  const selectedRef = useRef<HTMLButtonElement>(null); // 선택되는 시간 버튼
+
+  // 처음 그려질 때, 선택된 시간이 박스 가운데 오도록 스크롤(한 번만)
+  useEffect(() => {
+    const container = containerRef.current;
+    const selected = selectedRef.current;
+    if (!container || !selected) return;
+    // 선택 버튼의 위치 - 박스 절반 높이 + 버튼 절반 높이 = 가운데 정렬
+    container.scrollTop =
+      selected.offsetTop -
+      container.clientHeight / 2 +
+      selected.clientHeight / 2;
+  }, []);
+
   return (
-    <div className="h-40 overflow-y-auto rounded-lg border border-[#eeeeee]">
+    <div
+      ref={containerRef}
+      className="scrollbar-hide relative h-40 overflow-y-auto rounded-lg border border-[#eeeeee]"
+    >
       {TIME_OPTIONS.map((time) => {
         const isSelected = time === value;
         return (
           <button
             key={time}
+            ref={isSelected ? selectedRef : undefined}
             type="button"
             onClick={() => onSelect(time)}
             className={[
               "flex w-full items-center justify-center py-1.5 text-[14px] transition",
               isSelected
-                ? "font-bold text-[#f59a58]"
+                ? "bg-[#fde3cf] font-bold text-[#e07b34]"
                 : "text-[#bbbbbb] hover:text-[#777777]",
-            ].join(" ")}>
+            ].join(" ")}
+          >
             {time}
-            {isSelected && <span className="ml-1 text-[12px]">{label}</span>}
           </button>
         );
       })}
@@ -102,9 +121,15 @@ function MeetingSlotPage() {
   // 상태 선언 - 이 화면에서만 쓰므로 useState
   const [viewYear, setViewYear] = useState(todayObj.getFullYear());
   const [viewMonth, setViewMonth] = useState(todayObj.getMonth()); // 0~11
-  const [selectedDate, setSelectedDate] = useState(""); // 달력에서 고른 날짜
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+
+  const [selectionMode, setSelectionMode] = useState<"single" | "range">(
+    "single",
+  ); // 하루/기간
+  const [selectedDate, setSelectedDate] = useState(""); // single 모드에서 고른 날짜
+  const [rangeStart, setRangeStart] = useState(""); // range 시작 날짜
+  const [rangeEnd, setRangeEnd] = useState(""); // range 종료 날짜
+  const [startTime, setStartTime] = useState("13:00");
+  const [endTime, setEndTime] = useState("18:00");
   const [error, setError] = useState("");
 
   // 지금 보여줄 달의 날짜 칸 배열
@@ -130,29 +155,109 @@ function MeetingSlotPage() {
     }
   };
 
-  // 날짜 칸 클릭 → 선택 날짜로 저장 (과거는 무시)
+  // 선택 모드 변경(하루/기간) - 바꿀 때 기존 선택은 초기화
+  const handleChangeMode = (mode: "single" | "range") => {
+    setSelectionMode(mode);
+    setSelectedDate("");
+    setRangeStart("");
+    setRangeEnd("");
+    setError("");
+  };
+
   const handleSelectDate = (day: number) => {
     const dateStr = toDateString(viewYear, viewMonth, day);
-    if (dateStr < today) return;
-    setSelectedDate(dateStr);
+    if (dateStr < today) return; // 과거는 무시
     setError("");
+
+    // 하루 모드: 그 날짜만 선택
+    if (selectionMode === "single") {
+      setSelectedDate(dateStr);
+      return;
+    }
+
+    // 기간 모드
+    // 시작/종료가 모두 정해진 상태
+    if (rangeStart && rangeEnd) {
+      if (dateStr === rangeStart) {
+        // 시작 다시 누름 -> 전체 취소
+        setRangeStart("");
+        setRangeEnd("");
+      } else if (dateStr === rangeEnd) {
+        // 종료를 다시 누름 -> 종료만 취소
+        setRangeEnd("");
+      } else {
+        // 그 외 날짜 -> 새 시작으로 다시 시작
+        setRangeStart(dateStr);
+        setRangeEnd("");
+      }
+      return;
+    }
+
+    // 시작만 있는 상태
+    if (rangeStart) {
+      if (dateStr === rangeStart) {
+        setRangeStart(""); // 시작을 다시 누름 -> 선택 취소
+      } else if (dateStr < rangeStart) {
+        setRangeStart(dateStr); // 시작보다 앞이면 시작 재지정
+      } else {
+        setRangeEnd(dateStr); // 뒤면 종료로 확정
+      }
+      return;
+    }
+
+    // 아무것도 없는 상태 -> 시작 지정
+    setRangeStart(dateStr);
   };
 
   // 후보 시간 추가
   const handleAddSlot = () => {
-    if (!selectedDate) {
-      setError("날짜를 먼저 선택해주세요.");
-      return;
-    }
     // "HH:mm" 문자열은 사전순=시간순이라 그대로 비교 가능
     if (endTime <= startTime) {
       setError("종료 시간은 시작 시간보다 늦어야 해요.");
       return;
     }
-    // 같은 날짜 + 시간 중복 방지(some - 하나라도 같으면 true)
+
+    // 리스트에 하루/기간이 섞이지 않도록 검사
+    // (슬롯이 slotDate === endDate면 하루, 다르면 기간)
+    const hasSingle = slots.some((s) => s.slotDate === s.endDate);
+    const hasRange = slots.some((s) => s.slotDate !== s.endDate);
+    if (selectionMode === "single" && hasRange) {
+      setError(
+        "기간 일정이 담겨있어요. 선택한 일정을 비우고 하루 일정을 추가해주세요.",
+      );
+      return;
+    }
+    if (selectionMode === "range" && hasSingle) {
+      setError(
+        "하루 일정이 담겨있어요. 선택한 일정을 비우고 기간 일정을 추가해주세요.",
+      );
+      return;
+    }
+
+    // 추가할 슬롯의 시작/종료 날짜를 모드에 따라 결정
+    let slotDate = "";
+    let endDate = "";
+    if (selectionMode === "single") {
+      if (!selectedDate) {
+        setError("날짜를 먼저 선택해주세요.");
+        return;
+      }
+      slotDate = selectedDate;
+      endDate = selectedDate; // 하루모드: 시작날짜 = 종료날짜
+    } else {
+      if (!rangeStart || !rangeEnd) {
+        setError("시작 날짜와 종료 날짜를 모두 선택해주세요.");
+        return;
+      }
+      slotDate = rangeStart;
+      endDate = rangeEnd; // 기간모드: 종료 날짜 따로
+    }
+
+    // 같은 일정 중복 방지
     const isDuplicate = slots.some(
       (s) =>
-        s.slotDate === selectedDate &&
+        s.slotDate === slotDate &&
+        s.endDate === endDate &&
         s.startTime === startTime &&
         s.endTime === endTime,
     );
@@ -161,13 +266,20 @@ function MeetingSlotPage() {
       return;
     }
 
+    // 슬롯 1개 추가
     addSlot({
-      id: crypto.randomUUID(), // 목록 구분,삭제용 고유 id
-      slotDate: selectedDate,
+      id: crypto.randomUUID(),
+      slotDate,
+      endDate,
       startTime,
       endTime,
     });
     setError("");
+
+    // 추가 후 선택 초기화
+    setSelectedDate("");
+    setRangeStart("");
+    setRangeEnd("");
   };
 
   // 다음 버튼
@@ -181,7 +293,7 @@ function MeetingSlotPage() {
   };
 
   return (
-    <section className="flex min-h-full flex-col bg-white">
+    <section className="flex h-full flex-col bg-white">
       <Header
         title="날짜/시간대 선택"
         left={
@@ -189,28 +301,67 @@ function MeetingSlotPage() {
             type="button"
             onClick={() => navigate(-1)}
             aria-label="뒤로 가기"
-            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-[#f5f5f5]">
+            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-[#f5f5f5]"
+          >
             <ChevronLeft size={24} />
           </button>
         }
       />
 
-      <div className="flex flex-1 flex-col px-5 pb-4 pt-4">
-        {/* 월 이동 */}
-        <div className="flex items-center justify-center gap-5">
-          <button type="button" onClick={handlePrevMonth} aria-label="이전 달">
-            <ChevronLeft size={20} className="text-[#c4c4c4]" />
-          </button>
-          <span className="text-[15px] font-bold text-[#2d2d2d]">
-            {viewYear}년 {viewMonth + 1}월
-          </span>
-          <button type="button" onClick={handleNextMonth} aria-label="다음 달">
-            <ChevronRight size={20} className="text-[#c4c4c4]" />
-          </button>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pt-6">
+        <div className="flex items-center justify-between">
+          {/* 월 이동 */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              aria-label="이전 달"
+            >
+              <ChevronLeft size={20} className="text-[#c4c4c4]" />
+            </button>
+            <span className="text-[15px] font-bold text-[#2d2d2d]">
+              {viewYear}년 {viewMonth + 1}월
+            </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              aria-label="다음 달"
+            >
+              <ChevronRight size={20} className="text-[#c4c4c4]" />
+            </button>
+          </div>
+
+          {/* 하루/기간 선택 토글 (오른쪽 상단) */}
+          <div className="inline-flex rounded-full bg-[#f4f4f4] p-0.5 text-[13px] font-bold">
+            <button
+              type="button"
+              onClick={() => handleChangeMode("single")}
+              className={[
+                "rounded-full px-3 py-1 transition",
+                selectionMode === "single"
+                  ? "bg-white text-[#f59a58] shadow-sm"
+                  : "text-[#9b9b9b]",
+              ].join(" ")}
+            >
+              하루
+            </button>
+            <button
+              type="button"
+              onClick={() => handleChangeMode("range")}
+              className={[
+                "rounded-full px-3 py-1 transition",
+                selectionMode === "range"
+                  ? "bg-white text-[#f59a58] shadow-sm"
+                  : "text-[#9b9b9b]",
+              ].join(" ")}
+            >
+              기간
+            </button>
+          </div>
         </div>
 
         {/* 요일 헤더 */}
-        <div className="mt-4 grid grid-cols-7 text-center text-[13px] font-bold">
+        <div className="mt-6 grid grid-cols-7 text-center text-[15px] font-bold">
           {WEEKDAYS.map((label, index) => (
             <div
               key={label}
@@ -220,14 +371,15 @@ function MeetingSlotPage() {
                   : index === 6
                     ? "text-[#3a7afc]"
                     : "text-[#7a7a7a]"
-              }>
+              }
+            >
               {label}
             </div>
           ))}
         </div>
 
         {/* 날짜 그리드 */}
-        <div className="mt-2 grid grid-cols-7 gap-y-2 text-center">
+        <div className="mt-3 grid grid-cols-7 gap-y-2 text-center">
           {calendarDays.map((day, index) => {
             // 앞 빈칸은 빈 div로 자리만 차지
             if (day === null) {
@@ -235,82 +387,146 @@ function MeetingSlotPage() {
             }
             const dateStr = toDateString(viewYear, viewMonth, day);
             const isPast = dateStr < today;
-            const isSelected = dateStr === selectedDate;
+            // 모드 별로 "선택됨" 판정이 다름
+            const isSelected =
+              selectionMode === "single"
+                ? dateStr === selectedDate
+                : dateStr === rangeStart || dateStr === rangeEnd;
+            // 기간 모드에서 시작~종료 사이 (양 끝 제외)
+            const isInRange =
+              selectionMode === "range" &&
+              rangeStart !== "" &&
+              rangeEnd !== "" &&
+              dateStr > rangeStart &&
+              dateStr < rangeEnd;
+
             const hasSlot = slots.some((s) => s.slotDate === dateStr);
+            // 기간 모드에서 시작/종료 날짜 아래에 띄울 작은 라벨
+            const rangeLabel =
+              selectionMode === "range" && dateStr === rangeStart
+                ? "시작"
+                : selectionMode === "range" && dateStr === rangeEnd
+                  ? "종료"
+                  : "";
 
             return (
-              <button
-                key={dateStr}
-                type="button"
-                onClick={() => handleSelectDate(day)}
-                disabled={isPast}
-                className={[
-                  "mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[14px] font-semibold transition",
-                  isPast ? "text-[#d4d4d4]" : "text-[#3a3a3a]",
-                  isSelected ? "bg-[#f59a58] text-white" : "",
-                  !isSelected && hasSlot ? "bg-[#fde3cf] text-[#e07b34]" : "",
-                ].join(" ")}>
-                {day}
-              </button>
+              <div key={dateStr} className="flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => handleSelectDate(day)}
+                  disabled={isPast}
+                  className={[
+                    "flex h-9 w-9 items-center justify-center rounded-full text-[15px] font-semibold transition",
+                    isPast ? "text-[#d4d4d4]" : "text-[#3a3a3a]",
+                    isSelected ? "bg-[#f59a58] text-white" : "",
+                    !isSelected && (isInRange || hasSlot)
+                      ? "bg-[#fde3cf] text-[#e07b34]"
+                      : "",
+                  ].join(" ")}
+                >
+                  {day}
+                </button>
+                {/* 시작/종료 라벨(빈 글자라도 자리 차지->줄높이 유지) */}
+                <span className="mt-0.5 h-3 text-[10px] font-bold leading-none text-[#f59a58]">
+                  {rangeLabel}
+                </span>
+              </div>
             );
           })}
         </div>
 
-        {/* 시간 선택: 부터 / 까지 */}
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <TimeColumn label="부터" value={startTime} onSelect={setStartTime} />
-          <TimeColumn label="까지" value={endTime} onSelect={setEndTime} />
+        {/* 시간 선택: 시작 시간 / 종료 시간 제목 추가 */}
+        <div className="mt-8 grid grid-cols-2 gap-3">
+          <div>
+            <p className="mb-1.5 text-[13px] font-bold text-[#4a4a4a]">
+              시작 시간
+            </p>
+            <TimeColumn value={startTime} onSelect={setStartTime} />
+          </div>
+          <div>
+            <p className="mb-1.5 text-[13px] font-bold text-[#4a4a4a]">
+              종료 시간
+            </p>
+            <TimeColumn value={endTime} onSelect={setEndTime} />
+          </div>
         </div>
 
+        {/* 에러 메시지 */}
         {error && (
-          <p className="mt-3 text-xs font-semibold text-[#fc3a3a]">{error}</p>
+          <p className="mt-3 text-sm font-semibold text-[#fc3a3a]">{error}</p>
         )}
 
-        <Button
+        <button
           type="button"
-          variant="orange"
-          fullWidth
           onClick={handleAddSlot}
-          className="mt-3">
-          후보 시간 추가
-        </Button>
+          className="mt-3 inline-flex items-center gap-1 self-end rounded-full bg-[#f59a58] px-4 py-2 text-[13px] font-bold text-white transition hover:bg-[#ef8840]"
+        >
+          <Plus size={16} />
+          가능한 시간 추가
+        </button>
 
-        {/* 추가된 슬롯 카드 목록 */}
-        <ul className="mt-5 space-y-3">
-          {slots.map((slot) => (
-            <li
-              key={slot.id}
-              className="flex items-center justify-between rounded-xl border border-[#eeeeee] px-4 py-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#333333]">
-                  <CalendarIcon size={15} className="text-[#9b9b9b]" />
-                  {formatKoreanDate(slot.slotDate)}
-                </div>
-                <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[#777777]">
-                  <Clock size={15} className="text-[#9b9b9b]" />
-                  {slot.startTime} 부터 {slot.endTime} 까지
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeSlot(slot.id)}
-                aria-label="이 후보 시간 삭제"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-[#bbbbbb] transition hover:bg-[#f5f5f5] hover:text-[#fc3a3a]">
-                <Trash2 size={17} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        {/* 추가된 슬롯 카드 목록 - 이 영역만 스크롤 */}
+        <div className="scrollbar-hide mt-5 min-h-0 flex-1 overflow-y-auto">
+          <ul className="space-y-3 pb-2">
+            {slots.map((slot) => {
+              // 시작일 + 종료일이면 기간 일정
+              const isRange = slot.slotDate !== slot.endDate;
+              return (
+                <li
+                  key={slot.id}
+                  className="flex items-center justify-between rounded-xl border border-[#eeeeee] px-4 py-3"
+                >
+                  <div className="space-y-1">
+                    {isRange ? (
+                      // 기간: 시작 줄 / 종료 줄(2줄)
+                      <>
+                        <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#333333]">
+                          <CalendarIcon size={15} className="text-[#9b9b9b]" />
+                          {formatKoreanDate(slot.slotDate)} {slot.startTime}{" "}
+                          부터
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#333333]">
+                          <CalendarIcon size={15} className="text-[#9b9b9b]" />
+                          {formatKoreanDate(slot.endDate)} {slot.endTime} 까지
+                        </div>
+                      </>
+                    ) : (
+                      // 하루: 날짜 / 시간 줄(기존 형태)
+                      <>
+                        <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#333333]">
+                          <CalendarIcon size={15} className="text-[#9b9b9b]" />
+                          {formatKoreanDate(slot.slotDate)}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[13px] font-bold text-[#777777]">
+                          <Clock size={15} className="text-[#9b9b9b]" />
+                          {slot.startTime} 부터 {slot.endTime} 까지
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeSlot(slot.id)}
+                    aria-label="이 후보 시간 삭제"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[#bbbbbb] transition hover:bg-[#f5f5f5] hover:text-[#fc3a3a]"
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
 
-        {/* 슬롯이 하나도 없을 때 안내 (빈 상태) */}
-        {slots.length === 0 && (
-          <p className="mt-5 text-center text-sm font-semibold text-[#c4c4c4]">
-            아직 추가된 후보 시간이 없어요.
-          </p>
-        )}
+          {/* 슬롯이 하나도 없을 때 안내 (빈 상태) */}
+          {slots.length === 0 && (
+            <p className="mt-5 text-center text-sm font-semibold text-[#c4c4c4]">
+              아직 추가된 후보 시간이 없어요.
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="px-5 pb-6">
+      <div className="shrink-0 border-t border-[#f0f0f0] px-6 pb-6 pt-4">
         <Button type="button" fullWidth onClick={handleNext}>
           다음
         </Button>
