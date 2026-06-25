@@ -31,7 +31,7 @@
 | --- | ----------------- | ------------------------- | ----------------------------------------------------- |
 | 1   | `USERS`           | 카카오 로그인 사용자      | `kakao_id`, `name`                                    |
 | 2   | `MEETINGS`        | 모임(약속) 본체           | `name`, `invite_token`, `status`, `confirmed_slot_id` |
-| 3   | `CANDIDATE_SLOTS` | 후보 시간 슬롯            | `slot_date`, `start_time`, `end_time`                 |
+| 3   | `CANDIDATE_SLOTS` | 후보 시간 슬롯            | `start_date`, `end_date`, `start_time`, `end_time`    |
 | 4   | `PARTICIPANTS`    | 모임 참여자 (소셜+비회원) | `display_name`, `type`, `submitted_at`                |
 | 5   | `AVAILABILITIES`  | 슬롯별 가능/불가능 응답   | `status`                                              |
 
@@ -113,7 +113,8 @@ DRAFT ──→ OPEN ──→ CONFIRMED   (방장이 최종 일정 확정)
 | ------------ | ------------ | -------- | ---------------- | ------------------------------------ |
 | `id`         | NUMBER(19,0) | NOT NULL | PK               | 슬롯 식별자. 시퀀스(`SEQ_*`) 채번      |
 | `meeting_id` | NUMBER(19,0) | NOT NULL | FK → MEETINGS.id | 소속 모임                            |
-| `slot_date`  | DATE         | NOT NULL |                  | 후보 날짜. JPA `LocalDate` 매핑      |
+| `start_date` | DATE         | NOT NULL |                  | 슬롯 시작 날짜. JPA `LocalDate` 매핑 |
+| `end_date`   | DATE         | NOT NULL |                  | 슬롯 종료 날짜. JPA `LocalDate` 매핑 (하루짜리면 start_date와 동일) |
 | `start_time` | TIMESTAMP    | NOT NULL |                  | 슬롯 시작 시각. JPA `LocalTime` 매핑 |
 | `end_time`   | TIMESTAMP    | NOT NULL |                  | 슬롯 종료 시각                       |
 | `created_at` | TIMESTAMP    | NOT NULL |                  | 생성 시각                            |
@@ -122,7 +123,7 @@ DRAFT ──→ OPEN ──→ CONFIRMED   (방장이 최종 일정 확정)
 
 **추가 제약**
 
-- `(meeting_id, slot_date, start_time)` 복합 UNIQUE — 중복 슬롯 방지
+- `(meeting_id, start_date, start_time)` 복합 UNIQUE — 중복 슬롯 방지
 
 **비즈니스 규칙**
 
@@ -308,7 +309,7 @@ UNIQUE 제약은 Oracle이 자동으로 인덱스를 생성하므로 별도 정�
 | USERS           | `kakao_id`                               | 로그인 시 사용자 조회         |
 | MEETINGS        | `invite_token`                           | 초대 URL 접속 시 모임 조회    |
 | MEETINGS        | `result_token`                           | 결과 URL 접속 시 모임 조회    |
-| CANDIDATE_SLOTS | `(meeting_id, slot_date, start_time)`    | 중복 슬롯 방지                |
+| CANDIDATE_SLOTS | `(meeting_id, start_date, start_time)`   | 중복 슬롯 방지                |
 | PARTICIPANTS    | `(meeting_id, user_id)`                  | 중복 참여 방지                |
 | PARTICIPANTS    | `(meeting_id, display_name)`             | 같은 모임 내 닉네임 중복 방지 |
 | AVAILABILITIES  | `(participant_id, candidate_slot_id)`    | 중복 응답 방지                |
@@ -322,7 +323,7 @@ UNIQUE 제약은 Oracle이 자동으로 인덱스를 생성하므로 별도 정�
 ### 8.1 시간대별 가능/불가능 인원 집계 (결과 화면)
 
 ```sql
-SELECT cs.id, cs.slot_date, cs.start_time, cs.end_time,
+SELECT cs.id, cs.start_date, cs.end_date, cs.start_time, cs.end_time,
        COUNT(CASE WHEN a.status = 'AVAILABLE'   THEN 1 END) AS yes_count,
        COUNT(CASE WHEN a.status = 'UNAVAILABLE' THEN 1 END) AS no_count
   FROM candidate_slots cs
@@ -331,8 +332,8 @@ SELECT cs.id, cs.slot_date, cs.start_time, cs.end_time,
    AND a.deleted_at IS NULL
  WHERE cs.meeting_id = :meetingId
    AND cs.deleted_at IS NULL
- GROUP BY cs.id, cs.slot_date, cs.start_time, cs.end_time
- ORDER BY yes_count DESC, cs.slot_date, cs.start_time;
+ GROUP BY cs.id, cs.start_date, cs.end_date, cs.start_time, cs.end_time
+ ORDER BY yes_count DESC, cs.start_date, cs.start_time;
 ```
 
 ### 8.2 전원 응답 완료 여부 확인

@@ -26,7 +26,8 @@ erDiagram
     CANDIDATE_SLOTS {
         NUMBER id PK
         NUMBER meeting_id FK
-        DATE slot_date
+        DATE start_date
+        DATE end_date
         TIMESTAMP start_time
         TIMESTAMP end_time
         TIMESTAMP created_at

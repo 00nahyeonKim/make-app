@@ -130,7 +130,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | Participants   | POST   | `/api/meetings/{inviteToken}/participants`           | 소셜 회원 참여 등록              | Cookie                 |
 | Participants   | GET    | `/api/meetings/{inviteToken}/participants`           | 참여자 목록 조회                 | Public                 |
 | Participants   | GET    | `/api/meetings/{inviteToken}/participants/me`        | 본인 참여 정보 조회              | Cookie                 |
-| Participants   | POST   | `/api/meetings/{inviteToken}/participants/me/submit` | 응답 완료 처리                   | Cookie                 |
+| Availabilities | POST   | `/api/meetings/{inviteToken}/availabilities/submit`  | 응답 완료 처리                   | Cookie                 |
 | Availabilities | PUT    | `/api/meetings/{inviteToken}/availabilities`         | 본인 응답 등록/수정              | Cookie                 |
 | Availabilities | GET    | `/api/meetings/{inviteToken}/availabilities`         | 응답 현황 조회                   | Public                 |
 | Results        | GET    | `/api/meetings/{inviteToken}/results`                | 결과 화면 데이터 조회            | Public                 |
@@ -350,12 +350,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
   "expectedCount": 8,
   "candidateSlots": [
     {
-      "slotDate": "2026-06-01",
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-01",
       "startTime": "19:00",
       "endTime": "21:00"
     },
     {
-      "slotDate": "2026-06-02",
+      "startDate": "2026-06-02",
+      "endDate": "2026-06-02",
       "startTime": "20:00",
       "endTime": "22:00"
     }
@@ -369,10 +371,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | -------------------------- | ------- | ---- | -------------------------------- |
 | name                       | String  | ✅   | 1~10자, 공백만 입력 불가         |
 | expectedCount              | Integer | ❌   | 2~99, 미정일 경우 null 또는 생략 |
-| candidateSlots             | Array   | ✅   | 최소 1개 이상                    |
-| candidateSlots[].slotDate  | Date    | ✅   | YYYY-MM-DD 형식, 과거 날짜 불가  |
-| candidateSlots[].startTime | Time    | ✅   | HH:mm 형식                       |
-| candidateSlots[].endTime   | Time    | ✅   | startTime보다 늦어야 함          |
+| candidateSlots              | Array   | ✅   | 최소 1개 이상                               |
+| candidateSlots[].startDate  | Date    | ✅   | YYYY-MM-DD 형식, 과거 날짜 불가             |
+| candidateSlots[].endDate    | Date    | ✅   | YYYY-MM-DD 형식, startDate 이상이어야 함    |
+| candidateSlots[].startTime  | Time    | ✅   | HH:mm 형식                                  |
+| candidateSlots[].endTime    | Time    | ✅   | startTime보다 늦어야 함                     |
 
 **Response 201 Created**
 
@@ -426,7 +429,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
     "candidateSlots": [
       {
         "id": 101,
-        "slotDate": "2026-06-01",
+        "startDate": "2026-06-01",
+        "endDate": "2026-06-01",
         "startTime": "19:00",
         "endTime": "21:00"
       }
@@ -466,7 +470,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
     "status": "CONFIRMED",
     "confirmedSlot": {
       "id": 101,
-      "slotDate": "2026-06-01",
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-01",
       "startTime": "19:00",
       "endTime": "20:00"
     }
@@ -722,7 +727,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | 항목     | 값                                                   |
 | -------- | ---------------------------------------------------- |
 | Method   | `POST`                                               |
-| URI      | `/api/meetings/{inviteToken}/participants/me/submit` |
+| URI      | `/api/meetings/{inviteToken}/availabilities/submit` |
 | 인증     | Cookie (소셜/게스트 공통)                            |
 | 요구사항 | FR-046, FR-066                                       |
 
@@ -861,7 +866,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
     "slots": [
       {
         "id": 101,
-        "slotDate": "2026-06-01",
+        "startDate": "2026-06-01",
+        "endDate": "2026-06-01",
         "startTime": "19:00",
         "endTime": "19:30",
         "availableCount": 5,
@@ -872,7 +878,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
       },
       {
         "id": 102,
-        "slotDate": "2026-06-01",
+        "startDate": "2026-06-01",
+        "endDate": "2026-06-01",
         "startTime": "19:30",
         "endTime": "20:00",
         "availableCount": 4,
