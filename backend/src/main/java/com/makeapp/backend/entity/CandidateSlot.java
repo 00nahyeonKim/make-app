@@ -40,8 +40,11 @@ public class CandidateSlot extends BaseEntity{
     @JoinColumn(name = "meeting_id", nullable = false)
     private Meeting meeting;
 
-    @Column(name = "slot_date", nullable = false)
-    private LocalDate slotDate;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
 
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
@@ -50,9 +53,11 @@ public class CandidateSlot extends BaseEntity{
     private LocalTime endTime;
 
     @Builder
-    public CandidateSlot(Meeting meeting, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {
+    public CandidateSlot(Meeting meeting, LocalDate startDate, LocalDate endDate,
+                        LocalTime startTime, LocalTime endTime) {
         this.meeting = meeting;
-        this.slotDate = slotDate;
+        this.startDate = startDate;
+        this.endDate = endDate;
         this.startTime = startTime;
         this.endTime = endTime;
     }

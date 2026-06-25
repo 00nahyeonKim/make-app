@@ -757,19 +757,23 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 ```json
 {
   "availabilities": [
-    { "candidateSlotId": 101, "status": "AVAILABLE" },
+    { "candidateSlotId": 101, "status": "AVAILABLE", "startTime": "10:00", "endTime": "11:00" },
     { "candidateSlotId": 102, "status": "UNAVAILABLE" },
     { "candidateSlotId": 103, "status": "AVAILABLE" }
   ]
 }
 ```
 
+- `startTime` / `endTime`: AVAILABLE 시 부분 가용 시간 범위. 생략하면 슬롯 전체 가능으로 처리.
+
 **필드 검증**
 
-| 필드                             | 타입 | 제약                           |
-| -------------------------------- | ---- | ------------------------------ |
-| availabilities[].candidateSlotId | Long | 해당 모임의 슬롯 ID여야 함     |
-| availabilities[].status          | Enum | `AVAILABLE` 또는 `UNAVAILABLE` |
+| 필드                             | 타입      | 제약                                                       |
+| -------------------------------- | --------- | ---------------------------------------------------------- |
+| availabilities[].candidateSlotId | Long      | 해당 모임의 슬롯 ID여야 함                                 |
+| availabilities[].status          | Enum      | `AVAILABLE` 또는 `UNAVAILABLE`                             |
+| availabilities[].startTime       | LocalTime | AVAILABLE + 부분 시간 지정 시 필수. 슬롯 startTime 이상    |
+| availabilities[].endTime         | LocalTime | AVAILABLE + 부분 시간 지정 시 필수. 슬롯 endTime 이하      |
 
 **Response 200 OK**
 
@@ -804,11 +808,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
     "slots": [
       {
         "id": 101,
-        "slotDate": "2026-06-01",
-        "startTime": "19:00",
-        "endTime": "19:30",
+        "startDate": "2026-06-01",
+        "endDate": "2026-06-01",
+        "startTime": "09:00",
+        "endTime": "11:00",
         "availableParticipants": [
-          { "id": 1001, "displayName": "김민수" },
+          { "id": 1001, "displayName": "김민수", "startTime": "10:00", "endTime": "11:00" },
           { "id": 1003, "displayName": "이수현" }
         ],
         "unavailableParticipants": [{ "id": 1002, "displayName": "박지영" }]
@@ -817,6 +822,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
   }
 }
 ```
+
+- `availableParticipants[].startTime` / `endTime`: 부분 가용 응답 시에만 포함. 슬롯 전체 가능이면 생략.
 
 ---
 

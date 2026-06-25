@@ -45,7 +45,8 @@ public class MeetingService {
 
         request.getCandidateSlots().forEach(s -> candidateSlotRepository.save(CandidateSlot.builder()
                 .meeting(meeting)
-                .slotDate(s.getSlotDate())
+                .startDate(s.getStartDate())
+                .endDate(s.getEndDate())
                 .startTime(s.getStartTime())
                 .endTime(s.getEndTime())
                 .build()));

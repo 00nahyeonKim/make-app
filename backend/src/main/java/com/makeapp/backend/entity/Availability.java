@@ -2,6 +2,8 @@ package com.makeapp.backend.entity;
 
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,6 +21,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+// 각 참가자가 후보 시간대에 대해 남기는 응답
 @Entity
 @Table(name = "AVAILABILITIES")
 @Getter
@@ -43,15 +46,25 @@ public class Availability extends BaseEntity{
     @Column(nullable = false, length = 20)
     private AvailabilityStatus status;
 
+    @Column(name = "participant_start_time")
+    private LocalTime participantStartTime;
+
+    @Column(name = "participant_end_time")
+    private LocalTime participantEndTime;
+
     @Builder
     public Availability(Participant participant, CandidateSlot candidateSlot,
-                        AvailabilityStatus status) {
+                        AvailabilityStatus status, LocalTime participantStartTime, LocalTime participantEndTime) {
         this.participant = participant;
         this.candidateSlot = candidateSlot;
         this.status = status;
+        this.participantStartTime = participantStartTime;
+        this.participantEndTime = participantEndTime;
     }
 
-    public void updateStatus(AvailabilityStatus status) {
+    public void update(AvailabilityStatus status, LocalTime participantStartTime, LocalTime participantEndTime) {
         this.status = status;
+        this.participantStartTime = participantStartTime;
+        this.participantEndTime = participantEndTime;
     }
 }

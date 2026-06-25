@@ -39,13 +39,15 @@ public class MeetingDetailResponse {             // 공개 조회용 → 토큰 
     @Getter
     public static class SlotInfo {               // 후보 시간 하나를 응답할 모양
         private final Long id;
-        private final LocalDate slotDate;
+        private final LocalDate startDate;
+        private final LocalDate endDate;
         private final LocalTime startTime;
         private final LocalTime endTime;
 
         private SlotInfo(CandidateSlot slot) {
             this.id = slot.getId();
-            this.slotDate = slot.getSlotDate();
+            this.startDate = slot.getStartDate();
+            this.endDate = slot.getEndDate();
             this.startTime = slot.getStartTime();
             this.endTime = slot.getEndTime();
         }

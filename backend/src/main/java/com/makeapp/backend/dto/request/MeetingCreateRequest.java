@@ -36,9 +36,19 @@ public class MeetingCreateRequest {
     @NoArgsConstructor
     public static class  SlotRequest {
         
-        @NotNull(message = "날짜를 입력해주세요.")
+        @NotNull(message = "시작 날짜를 입력해주세요.")
         @FutureOrPresent(message = "과거 날짜는 입력할 수 없습니다.")
-        private LocalDate slotDate;
+        private LocalDate startDate;
+
+        @NotNull(message = "종료 날짜를 입력해주세요.")
+        @FutureOrPresent(message = "과거 날짜는 입력할 수 없습니다.")
+        private LocalDate endDate;
+
+        @AssertTrue(message = "종료 날짜는 시작 날짜와 같거나 이후여야 합니다.") // 검증 결과가 flase일 때 띄우는 메시지
+        private boolean isEndDateValid() {
+            if (startDate == null || endDate == null) return true;
+            return !endDate.isBefore(startDate);
+        }
 
         @NotNull(message = "시작 시간을 입력해주세요.")
         private LocalTime startTime;

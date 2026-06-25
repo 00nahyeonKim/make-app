@@ -1,0 +1,11 @@
+-- 1. slot_date → start_date 컬럼명 변경
+ALTER TABLE CANDIDATE_SLOTS RENAME COLUMN SLOT_DATE TO START_DATE;
+
+-- 2. end_date 컬럼 추가 (먼저 nullable로 추가)
+ALTER TABLE CANDIDATE_SLOTS ADD (END_DATE DATE);
+
+-- 3. 기존 데이터 백필: 하루짜리 = start == end
+UPDATE CANDIDATE_SLOTS SET END_DATE = START_DATE;
+
+-- 4. NOT NULL 제약 적용
+ALTER TABLE CANDIDATE_SLOTS MODIFY (END_DATE NOT NULL);

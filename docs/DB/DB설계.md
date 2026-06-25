@@ -182,13 +182,15 @@ UNIQUE (meeting_id, display_name)
 
 | 컬럼                | 자료형       | NULL     | 키/제약                 | 설명                                   |
 | ------------------- | ------------ | -------- | ----------------------- | -------------------------------------- |
-| `id`                | NUMBER(19,0) | NOT NULL | PK                      | 응답 식별자. 시퀀스(`SEQ_*`) 채번        |
-| `participant_id`    | NUMBER(19,0) | NOT NULL | FK → PARTICIPANTS.id    | 응답한 참여자                          |
-| `candidate_slot_id` | NUMBER(19,0) | NOT NULL | FK → CANDIDATE_SLOTS.id | 응답 대상 슬롯                         |
-| `status`            | VARCHAR2(20) | NOT NULL |                         | 응답 상태: `AVAILABLE` / `UNAVAILABLE` |
-| `created_at`        | TIMESTAMP    | NOT NULL |                         | 최초 응답 시각                         |
-| `updated_at`        | TIMESTAMP    | NOT NULL |                         | 마지막 수정 시각                       |
-| `deleted_at`        | TIMESTAMP    | NULL     |                         | 소프트 삭제 시각                       |
+| `id`                       | NUMBER(19,0) | NOT NULL | PK                      | 응답 식별자. 시퀀스(`SEQ_*`) 채번        |
+| `participant_id`           | NUMBER(19,0) | NOT NULL | FK → PARTICIPANTS.id    | 응답한 참여자                          |
+| `candidate_slot_id`        | NUMBER(19,0) | NOT NULL | FK → CANDIDATE_SLOTS.id | 응답 대상 슬롯                         |
+| `status`                   | VARCHAR2(20) | NOT NULL |                         | 응답 상태: `AVAILABLE` / `UNAVAILABLE` |
+| `participant_start_time`   | TIMESTAMP    | NULL     |                         | 부분 가용 시작 시간 (null = 슬롯 전체)  |
+| `participant_end_time`     | TIMESTAMP    | NULL     |                         | 부분 가용 종료 시간 (null = 슬롯 전체)  |
+| `created_at`               | TIMESTAMP    | NOT NULL |                         | 최초 응답 시각                         |
+| `updated_at`               | TIMESTAMP    | NOT NULL |                         | 마지막 수정 시각                       |
+| `deleted_at`               | TIMESTAMP    | NULL     |                         | 소프트 삭제 시각                       |
 
 **추가 제약 (필수)**
 
@@ -392,12 +394,17 @@ V2__create_meetings.sql
 V3__create_candidate_slots.sql
 V4__create_participants.sql
 V5__create_availabilities.sql
-V6__add_confirmed_slot_fk.sql           -- 순환 FK 처리
-V7__create_indexes.sql                  -- 비-UNIQUE 인덱스
+V6__add_confirmed_slot_fk.sql               -- 순환 FK 처리
+V7__create_indexes.sql                      -- 비-UNIQUE 인덱스
 V8__add_updated_at_to_candidate_slots.sql
 V9__add_deleted_at_to_availabilities.sql
-V10__create_sequences.sql               -- 시퀀스 생성
-V11__replace_guest_token_with_pin.sql   -- guest_token → pin_hash/pin_fail_count/pin_locked_until
+V10__create_sequences.sql                   -- 시퀀스 생성
+V11__replace_guest_token_with_pin.sql       -- guest_token → pin_hash/pin_fail_count/pin_locked_until
+V12__tighten_meeting_constraints.sql        -- expected_count <= 99 제약, name 길이 조정
+V13__extend_meeting_name.sql                -- name VARCHAR2(20)으로 확장
+V14__fix_participant_user_unique.sql        -- user_id NOT NULL일 때만 unique 적용 (게스트 중복 허용)
+V15__add_end_date_to_candidate_slots.sql    -- slot_date → start_date 변경, end_date 추가 (다일 슬롯 지원)
+V16__add_participant_times_to_availabilities.sql  -- participant_start_time/end_time 추가 (부분 가용 시간 지원)
 ```
 
 > 기존 마이그레이션 파일은 절대 수정하지 않고, 변경은 항상 새 버전(V10, V11...)으로 추가한다. Flyway가 체크섬으로 무결성을 검증하기 때문.
@@ -414,3 +421,4 @@ V11__replace_guest_token_with_pin.sql   -- guest_token → pin_hash/pin_fail_cou
 | v4   | 2026-05-22 | 5개 테이블 전체에 `deleted_at` 추가 (소프트 삭제 일관 적용), `CANDIDATE_SLOTS.updated_at` 추가 |
 | v5   | 2026-06-05 | `PARTICIPANTS.guest_token` 삭제 → `pin_hash` / `pin_fail_count` / `pin_locked_until` 추가 (비회원 인증 방식 변경: 랜덤 토큰 → 닉네임+PIN 해시) |
 | v6   | 2026-06-12 | PK 채번을 IDENTITY → 시퀀스(`SEQ_*`, INCREMENT BY 50)로 전환 (Flyway V10), 문서 내 IDENTITY 표기 일괄 갱신 |
+| v7   | 2026-06-25 | `AVAILABILITIES`에 `participant_start_time` / `participant_end_time` 추가 (Flyway V16), 부분 가용 시간 응답 지원 |
