@@ -1,12 +1,18 @@
 import { create } from "zustand";
-import type { DraftSlot, MeetingDraft } from "../types/meeting";
+import type {
+  CreateMeetingResponse,
+  DraftSlot,
+  MeetingDraft,
+} from "../types/meeting";
 
 // 스토어가 들고 있을 "상태값" + "상태를 바꾸는 함수들" 타입
 type MeetingDraftState = MeetingDraft & {
+  created: CreateMeetingResponse | null; //생성 성공 결과 (없으면 null)
   // 1페이지(모임명,인원)에서 받은 기본 정보 저장
   setBasicInfo: (info: { name: string; expectedCount: number | null }) => void;
   addSlot: (slot: DraftSlot) => void; // 슬롯 1개 추가
   removeSlot: (id: string) => void; // 특정 id의 슬롯 삭제
+  setCreated: (created: CreateMeetingResponse) => void; // 생성 결과 저장
   reset: () => void; // 전부 초기화
 };
 
@@ -20,6 +26,7 @@ const initialState: MeetingDraft = {
 export const useMeetingDraftStore = create<MeetingDraftState>((set) => ({
   // 초기 상태 펼치기
   ...initialState,
+  created: null,
 
   // 기본 정보 저장: 받은 값만 덮어쓰기
   setBasicInfo: (info) => {
@@ -43,8 +50,13 @@ export const useMeetingDraftStore = create<MeetingDraftState>((set) => ({
     }));
   },
 
+  // 생성 결과 저장
+  setCreated: (created) => {
+    set({ created });
+  },
+
   // 처음 상태로 되돌리기
   reset: () => {
-    set({ ...initialState });
+    set({ ...initialState, created: null });
   },
 }));

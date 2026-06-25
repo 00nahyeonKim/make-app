@@ -11,6 +11,9 @@ import {
   Trash2,
 } from "lucide-react";
 import Button from "../components/Button";
+import type { CandidateSlot, DraftSlot } from "../types/meeting";
+import { createMeeting } from "../api/meetingApi";
+import { getApiErrorMessage } from "../api/httpClient";
 
 // 요일 라벨 - getDay()는 0=일 ~ 6=토 를 돌려줌
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -20,6 +23,17 @@ function toDateString(year: number, month: number, day: number): string {
   const mm = String(month + 1).padStart(2, "0");
   const dd = String(day).padStart(2, "0");
   return `${year}-${mm}-${dd}`;
+}
+
+// 화면용 슬롯(DraftSlot[])을 서버용(CandidateSlot[])으로 변환
+// 백엔드가 startDate~endDate 기간을 그대로 받으므로 펼치지 않고 1:1 매핑
+function toCandidateSlots(slots: DraftSlot[]): CandidateSlot[] {
+  return slots.map((slot) => ({
+    startDate: slot.slotDate, // UI의 slotDate -> 서버의 startDate
+    endDate: slot.endDate,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+  }));
 }
 
 // 달력 칸 배열: 1일 앞의 빈칸(null) + 1일~말일
@@ -77,7 +91,7 @@ function TimeColumn({ value, onSelect }: TimeColumnProps) {
   return (
     <div
       ref={containerRef}
-      className="scrollbar-hide relative h-40 overflow-y-auto rounded-lg border border-[#eeeeee]"
+      className="scrollbar-hide relative h-36 overflow-y-auto rounded-lg border border-[#eeeeee]"
     >
       {TIME_OPTIONS.map((time) => {
         const isSelected = time === value;
@@ -109,6 +123,10 @@ function MeetingSlotPage() {
   const slots = useMeetingDraftStore((state) => state.slots);
   const addSlot = useMeetingDraftStore((state) => state.addSlot);
   const removeSlot = useMeetingDraftStore((state) => state.removeSlot);
+  // 모임 생성에 필요한 기본 정보 + 결과 저장 함수
+  const name = useMeetingDraftStore((state) => state.name);
+  const expectedCount = useMeetingDraftStore((state) => state.expectedCount);
+  const setCreated = useMeetingDraftStore((state) => state.setCreated);
 
   // 오늘 날짜(과거 날짜 선택 막기)
   const todayObj = new Date();
@@ -131,6 +149,7 @@ function MeetingSlotPage() {
   const [startTime, setStartTime] = useState("13:00");
   const [endTime, setEndTime] = useState("18:00");
   const [error, setError] = useState("");
+  const [isSubmittiing, setIsSubmitting] = useState(false); // 생성 요청 중 여부
 
   // 지금 보여줄 달의 날짜 칸 배열
   const calendarDays = buildCalendarDays(viewYear, viewMonth);
@@ -282,14 +301,35 @@ function MeetingSlotPage() {
     setRangeEnd("");
   };
 
-  // 다음 버튼
-  const handleNext = () => {
+  // 다음 버튼 -> 모임 생성 API 호출
+  const handleNext = async () => {
     if (slots.length === 0) {
       setError("후보 시간을 최소 1개 이상 추가해주세요.");
       return;
     }
-    console.log("모임 생성 요청 준비 완료:", slots);
-    // navigate("/meetings/new/confirm");
+
+    setError("");
+    setIsSubmitting(true); // 로딩 시작 (버튼 잠금)
+
+    try {
+      // 서버로 보낼 요청 DTO 만들기 (화면 데이터 -> API 데이터 변환)
+      const response = await createMeeting({
+        name,
+        expectedCount,
+        candidateSlots: toCandidateSlots(slots),
+      });
+
+      // 성공: 초대/결과 URL을 저장하고 공유 화면으로 이동
+      setCreated(response);
+      navigate("/meetings/new/share");
+    } catch (error) {
+      // 실패: 에러 메시지 표시
+      setError(
+        getApiErrorMessage(error, "모임 생성에 실패했어요. 다시 시도해주세요."),
+      );
+    } finally {
+      setIsSubmitting(false); // 성공이든 실패든 로딩 해제
+    }
   };
 
   return (
@@ -379,7 +419,7 @@ function MeetingSlotPage() {
         </div>
 
         {/* 날짜 그리드 */}
-        <div className="mt-3 grid grid-cols-7 gap-y-2 text-center">
+        <div className="mt-4 grid grid-cols-7 gap-y-0.5 text-center">
           {calendarDays.map((day, index) => {
             // 앞 빈칸은 빈 div로 자리만 차지
             if (day === null) {
@@ -427,7 +467,7 @@ function MeetingSlotPage() {
                   {day}
                 </button>
                 {/* 시작/종료 라벨(빈 글자라도 자리 차지->줄높이 유지) */}
-                <span className="mt-0.5 h-3 text-[10px] font-bold leading-none text-[#f59a58]">
+                <span className="mt-0.5 h-4 text-[10px] font-bold leading-none text-[#f59a58]">
                   {rangeLabel}
                 </span>
               </div>
@@ -436,7 +476,7 @@ function MeetingSlotPage() {
         </div>
 
         {/* 시간 선택: 시작 시간 / 종료 시간 제목 추가 */}
-        <div className="mt-8 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <p className="mb-1.5 text-[13px] font-bold text-[#4a4a4a]">
               시작 시간
@@ -526,9 +566,14 @@ function MeetingSlotPage() {
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-[#f0f0f0] px-6 pb-6 pt-4">
-        <Button type="button" fullWidth onClick={handleNext}>
-          다음
+      <div className="shrink-0 border-t border-[#f0f0f0] px-6 pb-4 pt-4">
+        <Button
+          type="button"
+          fullWidth
+          onClick={handleNext}
+          disabled={isSubmittiing}
+        >
+          {isSubmittiing ? "모임 만드는 중..." : "다음"}
         </Button>
       </div>
     </section>

@@ -9,6 +9,7 @@ const LoginPage = lazy(() => import("../pages/LoginPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 const MeetingCreatePage = lazy(() => import("../pages/MeetingCreatePage"));
 const MeetingSlotPage = lazy(() => import("../pages/MeetingSlotPage"));
+const MeetingSharePage = lazy(() => import("../pages/MeetingSharePage"));
 const KakaoCallbackPage = lazy(() => import("../pages/KakaoCallbackPage"));
 
 const withLoading = (children: ReactNode, message?: string) => (
@@ -53,6 +54,15 @@ const router = createBrowserRouter([
             <MeetingSlotPage />
           </ProtectedRoute>,
           "후보 시간 입력 화면을 준비하는 중이에요",
+        ),
+      },
+      {
+        path: "meetings/new/share",
+        element: withLoading(
+          <ProtectedRoute>
+            <MeetingSharePage />
+          </ProtectedRoute>,
+          "공유 화면을 준비하는 중이에요",
         ),
       },
       {

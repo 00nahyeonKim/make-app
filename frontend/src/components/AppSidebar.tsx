@@ -96,8 +96,8 @@ function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
         aria-labelledby="sidebar-title"
         className={[
           "absolute left-0 top-0 flex h-full w-[82%] max-w-77.5",
-          "flex-col bg-white shadow-2xl transition-transform duration-300 ease-out",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          "flex-col bg-white transition-transform duration-300 ease-out",
+          isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
         ].join(" ")}
       >
         <div className="flex h-14 items-center justify-between border-b border-[#eeeeee] px-5">
