@@ -3,6 +3,7 @@ import type {
   KakaoCallbackRequest,
   RefreshAccessTokenResponse,
 } from "../types/auth";
+import type { GuestRegisterRequest, Participant } from "../types/participant";
 import { request } from "./httpClient";
 
 /**
@@ -34,6 +35,20 @@ export function loginWithKakao(code: string): Promise<AuthLoginResponse> {
 export function refreshAccessToken(): Promise<RefreshAccessTokenResponse> {
   return request<RefreshAccessTokenResponse>("/api/auth/refresh", {
     method: "POST",
+  });
+}
+
+/**
+ * 비회원 게스트 참여 등록
+ * POST /api/auth/guest/register
+ * 성공 시 서버가 access_token(게스트) HttpOnly 쿠키를 내려줌
+ */
+export function registerGuest(
+  body: GuestRegisterRequest,
+): Promise<Participant> {
+  return request<Participant>("/api/auth/guest/register", {
+    method: "POST",
+    body,
   });
 }
 
