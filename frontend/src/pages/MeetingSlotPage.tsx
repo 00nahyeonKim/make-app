@@ -149,7 +149,7 @@ function MeetingSlotPage() {
   const [startTime, setStartTime] = useState("13:00");
   const [endTime, setEndTime] = useState("18:00");
   const [error, setError] = useState("");
-  const [isSubmittiing, setIsSubmitting] = useState(false); // 생성 요청 중 여부
+  const [isSubmitting, setIsSubmitting] = useState(false); // 생성 요청 중 여부
 
   // 지금 보여줄 달의 날짜 칸 배열
   const calendarDays = buildCalendarDays(viewYear, viewMonth);
@@ -321,7 +321,7 @@ function MeetingSlotPage() {
 
       // 성공: 초대/결과 URL을 저장하고 공유 화면으로 이동
       setCreated(response);
-      navigate("/meetings/new/share");
+      navigate("/meetings/new/result");
     } catch (error) {
       // 실패: 에러 메시지 표시
       setError(
@@ -475,39 +475,40 @@ function MeetingSlotPage() {
           })}
         </div>
 
-        {/* 시간 선택: 시작 시간 / 종료 시간 제목 추가 */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <p className="mb-1.5 text-[13px] font-bold text-[#4a4a4a]">
-              시작 시간
-            </p>
-            <TimeColumn value={startTime} onSelect={setStartTime} />
+        {/* 여기부터(시간 선택 ~ 일정 리스트)가 스크롤되는 영역 */}
+        <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {/* 시간 선택: 시작 시간 / 종료 시간 */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div>
+              <p className="mb-1.5 text-[13px] font-bold text-[#4a4a4a]">
+                시작 시간
+              </p>
+              <TimeColumn value={startTime} onSelect={setStartTime} />
+            </div>
+            <div>
+              <p className="mb-1.5 text-[13px] font-bold text-[#4a4a4a]">
+                종료 시간
+              </p>
+              <TimeColumn value={endTime} onSelect={setEndTime} />
+            </div>
           </div>
-          <div>
-            <p className="mb-1.5 text-[13px] font-bold text-[#4a4a4a]">
-              종료 시간
-            </p>
-            <TimeColumn value={endTime} onSelect={setEndTime} />
-          </div>
-        </div>
 
-        {/* 에러 메시지 */}
-        {error && (
-          <p className="mt-3 text-sm font-semibold text-[#fc3a3a]">{error}</p>
-        )}
+          {/* 에러 메시지 */}
+          {error && (
+            <p className="mt-3 text-sm font-semibold text-[#fc3a3a]">{error}</p>
+          )}
 
-        <button
-          type="button"
-          onClick={handleAddSlot}
-          className="mt-3 inline-flex items-center gap-1 self-end rounded-full bg-[#f59a58] px-4 py-2 text-[13px] font-bold text-white transition hover:bg-[#ef8840]"
-        >
-          <Plus size={16} />
-          가능한 시간 추가
-        </button>
+          <button
+            type="button"
+            onClick={handleAddSlot}
+            className="mt-3 inline-flex items-center gap-1 self-end rounded-full bg-[#f59a58] px-4 py-2 text-[13px] font-bold text-white transition hover:bg-[#ef8840]"
+          >
+            <Plus size={16} />
+            가능한 시간 추가
+          </button>
 
-        {/* 추가된 슬롯 카드 목록 - 이 영역만 스크롤 */}
-        <div className="scrollbar-hide mt-5 min-h-0 flex-1 overflow-y-auto">
-          <ul className="space-y-3 pb-2">
+          {/* 추가된 슬롯 카드 목록 */}
+          <ul className="mt-5 space-y-3 pb-2">
             {slots.map((slot) => {
               // 시작일 + 종료일이면 기간 일정
               const isRange = slot.slotDate !== slot.endDate;
@@ -571,9 +572,9 @@ function MeetingSlotPage() {
           type="button"
           fullWidth
           onClick={handleNext}
-          disabled={isSubmittiing}
+          disabled={isSubmitting}
         >
-          {isSubmittiing ? "모임 만드는 중..." : "다음"}
+          {isSubmitting ? "모임 만드는 중..." : "다음"}
         </Button>
       </div>
     </section>
