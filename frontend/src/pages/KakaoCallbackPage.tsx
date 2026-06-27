@@ -2,10 +2,12 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useAuthStore } from "../stores/authStore";
 import { useEffect, useState } from "react";
 import { loginWithKakao } from "../api/authApi";
+import { useGuestStore } from "../stores/guestStore";
+import { createParticipant } from "../api/participantApi";
 
 function KakaoCallbackPage() {
   const navigate = useNavigate(); // 로그인 성공 후 다른 페이지 이동시 사용
-  const [searchParams] = useSearchParams();  // URL query string 값 읽을 때 사용
+  const [searchParams] = useSearchParams(); // URL query string 값 읽을 때 사용
 
   // URL에서 code와 error 꺼내기
   const code = searchParams.get("code");
@@ -15,6 +17,7 @@ function KakaoCallbackPage() {
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated);
   // 로그인 실패, 취소, code 없음, 인증 만료 시 호출
   const setUnauthenticated = useAuthStore((state) => state.setUnauthenticated);
+  const setGuest = useGuestStore((state) => state.setGuest);
 
   const [message, setMessage] = useState("카카오 로그인 처리 중입니다.");
   const [errorMessage, setErrorMessage] = useState("");
@@ -37,9 +40,23 @@ function KakaoCallbackPage() {
     const requestKakaoLogin = async () => {
       try {
         const loginResponse = await loginWithKakao(code);
-
         setAuthenticated(loginResponse.user);
 
+        // 초대 흐름에서 온 경우: 돌아가서 참여까지 처리\
+        const pendingInviteToken = sessionStorage.getItem("pendingInviteToken");
+        if (pendingInviteToken) {
+          sessionStorage.removeItem("pendingInviteToken"); // 한 번 쓰고 지움
+          try {
+            const participant = await createParticipant(pendingInviteToken);
+            setGuest(participant);
+          } catch {
+            // 참여 등록 실패해도 일단 초대 화면으로는 보냄
+          }
+          navigate(`/invite/${pendingInviteToken}`, { replace: true });
+          return;
+        }
+
+        // 일반 로그인(모임 생성 흐름)
         navigate("/meetings/new", {
           replace: true,
         });
@@ -57,7 +74,14 @@ function KakaoCallbackPage() {
     };
 
     requestKakaoLogin();
-  }, [code, kakaoError, navigate, setAuthenticated, setUnauthenticated]);
+  }, [
+    code,
+    kakaoError,
+    navigate,
+    setAuthenticated,
+    setUnauthenticated,
+    setGuest,
+  ]);
 
   return (
     <section className="flex min-h-full flex-col items-center justify-center px-7 text-center">

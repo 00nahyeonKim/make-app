@@ -321,7 +321,7 @@ function MeetingSlotPage() {
 
       // 성공: 초대/결과 URL을 저장하고 공유 화면으로 이동
       setCreated(response);
-      navigate("/meetings/new/result");
+      navigate(`/invite/${response.inviteToken}`);
     } catch (error) {
       // 실패: 에러 메시지 표시
       setError(
