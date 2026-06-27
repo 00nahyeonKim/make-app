@@ -104,8 +104,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | `GUEST_NOT_FOUND`           | 404  | 해당 닉네임의 게스트 없음     |
 | `MEETING_ALREADY_CONFIRMED` | 409  | 이미 확정된 모임              |
 | `DUPLICATE_PARTICIPATION`   | 409  | 이미 참여 중인 모임           |
+| `DUPLICATE_DISPLAY_NAME`    | 409  | 이미 사용 중인 닉네임         |
 | `MEETING_EXPIRED`           | 410  | 마감된 모임                   |
-| `PIN_LOCKED`                | 429  | PIN 실패 5회 초과 — 30분 잠금 |
 | `INTERNAL_ERROR`            | 500  | 서버 내부 오류                |
 
 ---
@@ -270,15 +270,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 }
 ```
 
-> 동명이인이 있을 경우 서버에서 자동으로 `(2)`, `(3)` 등 접미사를 부여한다.
-
 **에러**
 
-| HTTP | code                | 설명                       |
-| ---- | ------------------- | -------------------------- |
-| 400  | `INVALID_REQUEST`   | 필수값 누락 또는 형식 오류 |
-| 404  | `MEETING_NOT_FOUND` | 존재하지 않는 초대 토큰    |
-| 410  | `MEETING_EXPIRED`   | 마감된 모임                |
+| HTTP | code                     | 설명                       |
+| ---- | ------------------------ | -------------------------- |
+| 400  | `INVALID_REQUEST`        | 필수값 누락 또는 형식 오류 |
+| 404  | `MEETING_NOT_FOUND`      | 존재하지 않는 초대 토큰    |
+| 409  | `DUPLICATE_DISPLAY_NAME` | 이미 사용 중인 닉네임      |
+| 410  | `MEETING_EXPIRED`        | 마감된 모임                |
 
 ---
 
@@ -325,7 +324,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | ---- | ----------------- | ------------------------- |
 | 401  | `PIN_MISMATCH`    | PIN 불일치                |
 | 404  | `GUEST_NOT_FOUND` | 해당 닉네임의 참가자 없음 |
-| 429  | `PIN_LOCKED`      | 5회 실패 → 30분 접근 잠금 |
 
 ---
 
@@ -623,7 +621,27 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 **Request Body**
 
-요청 본문 없음. 참가 유형(LEADER/MEMBER)과 표시 이름은 서버가 인증 정보(카카오 로그인)로 결정한다.
+기본적으로 요청 본문 없이 호출한다. 참가 유형(LEADER/MEMBER)과 표시 이름은 서버가 인증 정보(카카오 닉네임)로 결정한다.
+
+닉네임 충돌(`409 DUPLICATE_DISPLAY_NAME`)이 발생하면 프론트가 별칭 입력 모달을 띄우고, 사용자가 입력한 별칭을 담아 재요청한다.
+
+```json
+// 충돌 후 재요청 시에만 포함
+{
+  "displayName": "김민수(직장)"
+}
+```
+
+**참가 흐름 (닉네임 충돌 시)**
+
+```
+1차 요청: POST .../participants (body 없음)
+    → 이미 "김민수" 있으면 409 DUPLICATE_DISPLAY_NAME
+    → 프론트: "이 모임에서 사용할 별칭을 입력해 주세요." 모달 표시
+
+2차 요청: POST .../participants { "displayName": "김민수(직장)" }
+    → 통과 시 201 Created
+```
 
 **Response 201 Created**
 
@@ -640,7 +658,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 }
 ```
 
-> **참고**: 동명이인이 있을 경우 서버에서 자동으로 `(2)`, `(3)` 등 접미사를 부여한다.
+**에러**
+
+| HTTP | code                     | 설명                  |
+| ---- | ------------------------ | --------------------- |
+| 409  | `DUPLICATE_DISPLAY_NAME` | 이미 사용 중인 닉네임 |
+| 409  | `DUPLICATE_PARTICIPATION`| 이미 참여 중인 모임   |
 
 ---
 
@@ -931,3 +954,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | v0.2 | 2026-05-22 | HTTP method 수정                                                                                                                                                           |
 | v0.3 | 2026-06-05 | 비회원 인증 방식 변경 (X-Guest-Token → PIN 해시 + HttpOnly Cookie JWT), 게스트 등록/로그인 엔드포인트 추가                                                                 |
 | v0.4 | 2026-06-12 | 토큰 재발급을 refresh_token 쿠키 방식으로 명문화, 카카오 콜백 시 refresh_token 쿠키 발급·로그아웃 시 두 쿠키 삭제 반영, 초대 조회 410 규칙 삭제(만료는 status 필드로 표현) |
+| v0.5 | 2026-06-27 | 닉네임 중복 처리 정책 변경(자동 suffix → 409 에러 반환), 소셜 회원 참여 등록에 optional displayName 파라미터 추가, PIN 5회 락 제거(PIN_LOCKED 에러코드 삭제) |
