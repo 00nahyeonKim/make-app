@@ -52,6 +52,13 @@ export function registerGuest(
   });
 }
 
+export function loginGuest(body: GuestRegisterRequest): Promise<Participant> {
+  return request<Participant>("/api/auth/guest/login", {
+    method: "POST",
+    body,
+  });
+}
+
 /**
  * 로그아웃 API
  *
