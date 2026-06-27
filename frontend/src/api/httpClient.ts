@@ -7,6 +7,17 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
+export class ApiError extends Error {
+  code: string;
+  status: number;
+  constructor(message: string, code: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
 /**
  * 프로젝트에서 공통으로 사용하는 API 요청 함수
  */
@@ -54,11 +65,12 @@ export async function request<T>(
    * 백엔드 응답의 success가 false인 경우
    */
   if (!response.ok || !result.success) {
+    const code = !result.success ? result.error.code : "HTTP_ERROR";
     const message = !result.success
       ? result.error.message
       : `요청 처리에 실패했습니다. (${response.status})`;
 
-    throw new Error(message);
+    throw new ApiError(message, code, response.status);
   }
 
   return result.data;
