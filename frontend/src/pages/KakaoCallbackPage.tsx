@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { loginWithKakao } from "../api/authApi";
 import { useGuestStore } from "../stores/guestStore";
 import { createParticipant } from "../api/participantApi";
+import { ApiError } from "../api/httpClient";
 
 function KakaoCallbackPage() {
   const navigate = useNavigate(); // 로그인 성공 후 다른 페이지 이동시 사용
@@ -49,10 +50,18 @@ function KakaoCallbackPage() {
           try {
             const participant = await createParticipant(pendingInviteToken);
             setGuest(participant);
-          } catch {
-            // 참여 등록 실패해도 일단 초대 화면으로는 보냄
+            navigate(`/invite/${pendingInviteToken}`, { replace: true });
+          } catch (err) {
+            if (err instanceof ApiError && err.code === "DISPLAY_NAME_TAKEN") {
+              // 카카오 닉네임이 이미 있음 -> 별칭 입력 모달로
+              navigate(`/invite/${pendingInviteToken}/guest?alias=1`, {
+                replace: true,
+              });
+            } else {
+              // 이미 참가(DUPLICATE_PARTICIPATION) 등은 그냥 초대 화면으로
+              navigate(`/invite/${pendingInviteToken}`, { replace: true });
+            }
           }
-          navigate(`/invite/${pendingInviteToken}`, { replace: true });
           return;
         }
 

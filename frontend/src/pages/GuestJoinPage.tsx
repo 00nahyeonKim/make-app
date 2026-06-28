@@ -1,12 +1,15 @@
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useGuestStore } from "../stores/guestStore";
 import { useState, type ChangeEvent, type SyntheticEvent } from "react";
-import { getApiErrorMessage } from "../api/httpClient";
-import { registerGuest } from "../api/authApi";
+import { ApiError, getApiErrorMessage } from "../api/httpClient";
+import { loginGuest, registerGuest } from "../api/authApi";
 import { ChevronLeft } from "lucide-react";
 import Header from "../layouts/Header";
 import kakaoLoginButtonImage from "../assets/kakao-login-button.png";
 import Button from "../components/Button";
+import type { Participant } from "../types/participant";
+import { createParticipant } from "../api/participantApi";
+import AliasModal from "../components/AliasModal";
 
 const MAX_NAME_LENGTH = 20;
 const KAKAO_AUTH_URL = "https://kauth.kakao.com/oauth/authorize";
@@ -20,6 +23,30 @@ function GuestJoinPage() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  // 콜백에서 ?alias=1 로 들어오면 모달 열기
+  const [aliasOpen, setAliasOpen] = useState(searchParams.get("alias") === "1");
+  const [aliasLoading, setAliasLoading] = useState(false);
+  const [aliasError, setAliasError] = useState("");
+
+  // 별칭으로 소셜 재참여
+  const handleAliasSubmit = async (alias: string) => {
+    if (!inviteToken) return;
+    setAliasError("");
+    setAliasLoading(true);
+    try {
+      const participant = await createParticipant(inviteToken, alias);
+      setGuest(participant);
+      navigate(`/invite/${inviteToken}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "DISPLAY_NAME_TAKEN") {
+        setAliasError(getApiErrorMessage(err, "별칭 등록에 실패했어요."));
+      }
+    } finally {
+      setAliasLoading(false);
+    }
+  };
 
   // PIN: 숫자만 남기고 최대 4자리로 자름
   const handlePinChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -67,11 +94,22 @@ function GuestJoinPage() {
     setError("");
     setLoading(true);
     try {
-      const participant = await registerGuest({
-        inviteToken,
-        displayName: name,
-        pin,
-      });
+      let participant: Participant;
+      try {
+        // 같은 이름 + 맞는 PIN이면 기존 사용자로 재입장
+        participant = await loginGuest({ inviteToken, displayName: name, pin });
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "GUEST_NOT_FOUND") {
+          // 새 이름이면 등록
+          participant = await registerGuest({
+            inviteToken,
+            displayName: name,
+            pin,
+          });
+        } else {
+          throw err; // PIN_MISMATCH 등은 그대로 메시지 표시
+        }
+      }
       setGuest(participant); // 게스트 정보 저장(인증은 서버가 준 HttpOnly 쿠키)
       navigate(`/invite/${inviteToken}`);
     } catch (err) {
@@ -163,6 +201,14 @@ function GuestJoinPage() {
           PIN은 다른 기기에서 다시 들어올 때 본인 확인에 사용돼요
         </p>
       </div>
+
+      <AliasModal
+        open={aliasOpen}
+        loading={aliasLoading}
+        error={aliasError}
+        onSubmit={handleAliasSubmit}
+        onClose={() => setAliasOpen(false)}
+      />
     </section>
   );
 }
