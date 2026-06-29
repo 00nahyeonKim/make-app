@@ -138,23 +138,17 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
         
+        if (participantRepository.findByMeetingAndDisplayName(meeting, displayName).isPresent()) {
+            throw new CustomException(ErrorCode.PIN_MISMATCH);
+        }
+        
         String pinHash = passwordEncoder.encode(rawPin);    // PIN을 BCrypt 해시로 변환
-        String resolvedName = resolveDisplayName(meeting, displayName);
         return participantRepository.save(Participant.builder()
                 .meeting(meeting)
                 .pinHash(pinHash)
-                .displayName(resolvedName)
+                .displayName(displayName)
                 .type(ParticipantType.GUEST)
                 .build());
-    }
-
-    // 같은 모임에 같은 이름이 있으면 이름(n)으로 바꿔 모임 안에서 닉네임이 겹치지 않게 함
-    private String resolveDisplayName(Meeting meeting, String baseName) {
-        long count = participantRepository.findByMeeting(meeting).stream()  // 이 모임의 모든 참가자
-                .filter(p -> p.getDisplayName().equals(baseName)            // "철수" 정확히 일치
-                        || p.getDisplayName().startsWith(baseName + " ("))  //    또는 "철수 (..." 로 시작
-                .count();                                                   // 그런 이름 개수
-        return count == 0 ? baseName : baseName + " (" + (count + 1) + ")"; // 없으면 그대로, 있으면 번호
     }
 
     // 게스트 재로그인: 모임+닉네임으로 기존 참가자를 찾아 PIN을 검증
@@ -164,15 +158,13 @@ public class AuthService {
         Participant p = participantRepository.findByMeetingAndDisplayName(meeting, displayName)
                 .orElseThrow(() -> new CustomException(ErrorCode.GUEST_NOT_FOUND));
 
-        if (p.isPinLocked()) {
-            throw new CustomException(ErrorCode.PIN_LOCKED);
-        }
-
-        if (!passwordEncoder.matches(rawPin, p.getPinHash())) {
-            p.incrementPinFail();
+        // 소셜 회원이 같은 닉네임으로 먼저 참가해 있을 경우 -> 게스트 로그인 불가
+        if (p.getType() != ParticipantType.GUEST || p.getPinHash() == null) {
             throw new CustomException(ErrorCode.PIN_MISMATCH);
         }
-        p.resetPinFail();
+        if (!passwordEncoder.matches(rawPin, p.getPinHash())) {
+            throw new CustomException(ErrorCode.PIN_MISMATCH);
+        }
         return p;
     }
 }

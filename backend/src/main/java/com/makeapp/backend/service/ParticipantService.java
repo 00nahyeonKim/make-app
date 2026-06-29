@@ -33,7 +33,7 @@ public class ParticipantService {
     private final UserRepository userRepository;
     private final AvailabilityRepository availabilityRepository;    // 본인 응답(availabilities) 조회용
 
-    public ParticipantResponse join(String inviteToken, Long userId) {
+    public ParticipantResponse join(String inviteToken, Long userId, String customDisplayName) {
         Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
 
@@ -49,23 +49,22 @@ public class ParticipantService {
             throw new CustomException(ErrorCode.DUPLICATE_PARTICIPATION); // 이미 참가했으면 중복 차단
         }
 
+        String displayName = (customDisplayName != null && !customDisplayName.isBlank())
+                ? customDisplayName
+                : user.getName();
+
+        if (participantRepository.findByMeetingAndDisplayName(meeting, displayName).isPresent()) {
+                throw new CustomException(ErrorCode.DISPLAY_NAME_TAKEN); // 이때 오류가 나면 프론트가 별도 모달창 표시
+        }
+
         boolean isOwner = meeting.getOwner().getId().equals(userId);    // 주최자가 직접 참가하는 경우
         Participant p = participantRepository.save(Participant.builder()
                 .meeting(meeting)
                 .user(user)
-                .displayName(resolveDisplayName(meeting, user.getName())) // 이름 중복 시 "(n)" 처리 해주는 메서드(resolveDisplayName) 호출
+                .displayName(displayName) // 이름 중복 시 "(n)" 처리 해주는 메서드(resolveDisplayName) 호출
                 .type(isOwner ? ParticipantType.LEADER : ParticipantType.MEMBER) // 주최자=LEADER, 그 외=MEMBER
                 .build());
         return ParticipantResponse.of(p);
-    }
-
-    // 같은 모임 내 이름 중복 방지 ("철수" → "철수 (2)")  ※ 게스트 등록의 같은 로직과 동일
-    private String resolveDisplayName(Meeting meeting, String baseName) {
-        long count = participantRepository.findByMeeting(meeting).stream() // findByMeeting(meeting) → 이 모임의 참가자 전체를 리스트로 가져옴.
-                .filter(p -> p.getDisplayName().equals(baseName) // 여기서 p -> ...는 "각 참가자 p에 대해"라는 뜻의 람다
-                        || p.getDisplayName().startsWith(baseName + " ("))
-                .count();
-        return count == 0 ? baseName : baseName + " (" + (count + 1) + ")";
     }
 
     // 모임의 참가자 전체 목록 조회 (참가자 배열 + 집계: 총원/제출완료 수)

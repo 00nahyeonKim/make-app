@@ -9,10 +9,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.makeapp.backend.common.ApiResponse;
+import com.makeapp.backend.dto.request.ParticipantJoinRequest;
 import com.makeapp.backend.dto.response.ParticipantResponse;
 import com.makeapp.backend.service.ParticipantService;
 
@@ -26,14 +28,19 @@ public class ParticipantController {
     private final ParticipantService participantService;
 
     // 소셜 로그인 회원 참가용. 게스트는 POST /api/auth/guest/register 사용.
-    // 참가 유형(LEADER/MEMBER)과 표시 이름은 서버가 인증 정보(카카오)로 결정하므로 요청 본문이 없음.
+    // 흐름:
+    //   1차 요청: request body 없이 호출 → 카카오 닉네임으로 참가 시도
+    //   닉네임 충돌(DISPLAY_NAME_TAKEN 409): 프론트가 별칭 입력 모달 표시
+    //   2차 요청: { "displayName": "새별칭" } 을 body에 담아 재호출 → 별칭으로 참가
     @PostMapping
     public ResponseEntity<ApiResponse<ParticipantResponse>> join(
             @PathVariable String inviteToken, // URL의 {inviteToken} 값
+            @RequestBody(required = false) ParticipantJoinRequest request, // null 허용: 1차 요청 시 body 없음
             Authentication auth) {
-        Long userId = (auth != null && auth.isAuthenticated()) ? (Long) auth.getPrincipal() : null;
+        Long userId = (auth != null && auth.isAuthenticated()) ? (Long) auth.getPrincipal() : null; // 비인증 시 null → 서비스에서 UNAUTHORIZED 처리
+        String customDisplayName = (request != null) ? request.getDisplayName() : null; // null이면 서비스에서 카카오 닉네임 사용
         return ResponseEntity.status(HttpStatus.CREATED)
-        .body(ApiResponse.ok(participantService.join(inviteToken, userId)));
+        .body(ApiResponse.ok(participantService.join(inviteToken, userId, customDisplayName)));
     }
 
     @GetMapping

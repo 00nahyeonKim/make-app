@@ -50,12 +50,6 @@ public class Participant extends BaseEntity{
     @Column(name = "pin_hash", length = 255)
     private String pinHash;
 
-    @Column(name = "pin_fail_count", nullable = false)
-    private int pinFailCount = 0;
-
-    @Column(name = "pin_locked_until")
-    private LocalDateTime pinLockedUntil;
-
     @Column(name = "display_name", nullable = false, length = 50)
     private String displayName;
 
@@ -79,31 +73,15 @@ public class Participant extends BaseEntity{
     public void submit() {
         this.submittedAt = LocalDateTime.now();
     }
-
-    public boolean isPinLocked() {
-    return pinLockedUntil != null && LocalDateTime.now().isBefore(pinLockedUntil);
-    }
-
-    public void incrementPinFail() {
-        this.pinFailCount++;
-        if (this.pinFailCount >= 5) {
-            this.pinLockedUntil = LocalDateTime.now().plusMinutes(30);
-        }
-    }
-
-    public void resetPinFail() {
-        this.pinFailCount = 0;
-        this.pinLockedUntil = null;
-    }
-
-    public void updatePinHash(String pinHash) {
-        this.pinHash = pinHash;
-    }
-
+ 
     // submittedAt이 null이면 미제출, 값이 있으면 제출 완료
     // → 직접 null 비교 대신 이 메서드를 호출해서 내부 구현을 캡슐화
     public boolean isSubmitted() {
         return this.submittedAt != null;
+    }
+
+    public void updatePinHash(String pinHash) {
+        this.pinHash = pinHash;
     }
 
     @PrePersist // 엔터티가 처음 DB에 저장되기 직전에 실행

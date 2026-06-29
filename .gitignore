@@ -139,7 +139,7 @@ dist/
 dist-ssr/
 .vite/
 coverage/
-docs/
+frontend/docs/
 
 
 # ============================================
