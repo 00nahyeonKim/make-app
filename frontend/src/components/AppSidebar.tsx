@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { LogOut, X } from "lucide-react";
 import { logout } from "../api/authApi";
 import { getApiErrorMessage } from "../api/httpClient";
+import { useGuestStore } from "../stores/guestStore";
 
 interface AppSidebarProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
   const navigate = useNavigate();
 
   const user = useAuthStore((state) => state.user);
+  const guest = useGuestStore((state) => state.guest);
+  const displayName = guest?.displayName ?? user?.name ?? "사용자";
   const setUnauthenticated = useAuthStore((state) => state.setUnauthenticated);
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -125,7 +128,7 @@ function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
             </p>
 
             <p className="mt-1 text-[17px] font-bold tracking-[-0.04em] text-[#222222]">
-              {user?.name ?? "사용자"}님
+              {displayName}님
             </p>
           </div>
 

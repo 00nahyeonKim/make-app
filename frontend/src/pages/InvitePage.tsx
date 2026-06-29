@@ -116,9 +116,7 @@ function InvitePage() {
       <button
         type="button"
         aria-label="내 가능 시간 등록"
-        onClick={() => {
-          // TODO: AvailabilityPage로 이동
-        }}
+        onClick={() => navigate(`/invite/${inviteToken}/availability`)}
         className="absolute bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#f59a58] text-white shadow-lg transition hover:bg-[#ef8840]"
       >
         <Plus size={24} />
