@@ -24,7 +24,7 @@ import com.makeapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor // final 필드들의 생성자를 자동 생성
 @Transactional
 public class ParticipantService {
 

@@ -29,8 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor // final 필드들을 생성자로 자동 주입
-@Transactional // 메서드를 트랜잭샨으로 묶음 (도중 예외 시 DB 롤백)
+@RequiredArgsConstructor // final 필드들의 생성자를 자동 생성
+@Transactional // 메서드를 트랜잭션으로 묶음 (도중 예외 시 DB 롤백)
 public class AuthService { 
 
     private final UserRepository userRepository; // 카카오에서 받은 kakaoId로 userRepository.findByKakaoId(...) 호출
