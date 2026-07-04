@@ -62,6 +62,7 @@ function StatusGrid({ slots }: { slots: StatusSlot[] }) {
   const timeRows: number[] = [];
   for (let t = start; t < end; t += STEP) timeRows.push(t);
   const hourRows = timeRows.filter((m) => m % 60 === 0); // 정각(:00) 행만
+  const lastMinutes = timeRows[timeRows.length - 1]; // 맨 아래 행의 분
 
   // 색 진하기 기준: 한 칸 최대 가능 인원 (0으로 나누기 방지로 최소 1)
   const maxCount = Math.max(
@@ -109,7 +110,11 @@ function StatusGrid({ slots }: { slots: StatusSlot[] }) {
               const inRange =
                 toMinutes(slot.startTime) <= m && m < toMinutes(slot.endTime);
               const borderClass =
-                m % 60 === 0 ? "border-b border-dashed" : "border-b";
+                m === lastMinutes
+                  ? "" // 마지막 행: 아래 선 없음(바깥 테두리와 겹쳐 두꺼워지는 것 방지)
+                  : m % 60 === 0
+                    ? "border-b border-dashed"
+                    : "border-b";
 
               // 슬롯 범위 밖 = 회색 (선택 불가였던 자리)
               if (!inRange) {
@@ -313,9 +318,7 @@ function InvitePage() {
             type="button"
             variant="orange"
             fullWidth
-            onClick={() => {
-              // TODO(4주차): 결과 정렬/우선순위 화면으로 이동
-            }}
+            onClick={() => navigate(`/invite/${inviteToken}/result`)}
           >
             우선순위 보기
           </Button>

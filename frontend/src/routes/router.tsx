@@ -12,6 +12,7 @@ const MeetingSlotPage = lazy(() => import("../pages/MeetingSlotPage"));
 const InvitePage = lazy(() => import("../pages/InvitePage"));
 const GuestJoinPage = lazy(() => import("../pages/GuestJoinPage"));
 const AvailabilityPage = lazy(() => import("../pages/AvailabilityPage"));
+const InviteResultPage = lazy(() => import("../pages/InviteResultPage"));
 const KakaoCallbackPage = lazy(() => import("../pages/KakaoCallbackPage"));
 
 const withLoading = (children: ReactNode, message?: string) => (
@@ -75,6 +76,10 @@ const router = createBrowserRouter([
           <AvailabilityPage />,
           "가능한 시간 화면을 준비하는 중이에요",
         ),
+      },
+      {
+        path: "invite/:inviteToken/result",
+        element: withLoading(<InviteResultPage />, "결과를 준비하는 중이에요"),
       },
       {
         path: "*",

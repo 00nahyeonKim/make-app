@@ -1,0 +1,230 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import type { ResultResponse } from "../types/result";
+import type { AvailabilitiesStatus } from "../types/availability";
+import { getResults } from "../api/resultApi";
+import { getApiErrorMessage } from "../api/httpClient";
+import { getAvailabilities } from "../api/availabilityApi";
+import LoadingSpinner from "../components/LoadingSpinner";
+import Header from "../layouts/Header";
+import { ChevronDown, Home } from "lucide-react";
+import Button from "../components/Button";
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+// "2026-05-27" -> "05월 27일 (수)"
+function formatResultDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()];
+  return `${String(m).padStart(2, "0")}월 ${String(d).padStart(2, "0")}일 (${weekday})`;
+}
+
+function InviteResultPage() {
+  const { inviteToken } = useParams<{ inviteToken: string }>();
+  const navigate = useNavigate();
+
+  const [result, setResult] = useState<ResultResponse | null>(null);
+  const [avail, setAvail] = useState<AvailabilitiesStatus | null>(null); // 이름용
+  const [expanded, setExpanded] = useState<Set<number>>(new Set()); // 펼쳐진 카드 id들
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // ① 집계 결과 (인원 수, 추천 라벨, 정렬)
+  useEffect(() => {
+    if (!inviteToken) return;
+    setLoading(true);
+    getResults(inviteToken)
+      .then((data) => {
+        setResult(data);
+        setExpanded(new Set(data.slots.map((s) => s.id))); // 처음엔 다 펼쳐 둠
+      })
+      .catch((e) => setError(getApiErrorMessage(e, "결과를 불러올 수 없어요.")))
+      .finally(() => setLoading(false));
+  }, [inviteToken]);
+
+  // ② 참여자 이름 (results엔 없어서 availabilities에서 가져옴)
+  useEffect(() => {
+    if (!inviteToken) return;
+    getAvailabilities(inviteToken)
+      .then(setAvail)
+      .catch(() => setAvail(null)); // 이름은 없어도 화면은 떠야 하니 조용히
+  }, [inviteToken]);
+
+  // 슬롯 id -> {가능 이름들, 불가능 이름들} (getAvailabilities에서 뽑음)
+  const nameMap = new Map<
+    number,
+    { available: string[]; unavailable: string[] }
+  >();
+  avail?.slots.forEach((s) => {
+    nameMap.set(s.id, {
+      available: s.availableParticipants.map((p) => p.displayName),
+      unavailable: s.unavailableParticipants.map((p) => p.displayName),
+    });
+  });
+
+  // 카드 펼치기/접기
+  const toggle = (id: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  if (loading) {
+    return <LoadingSpinner fullScreen message="결과를 불러오는 중이에요" />;
+  }
+  if (error || !result || !inviteToken) {
+    return (
+      <section className="flex h-full flex-col items-center justify-center bg-white px-6 text-center">
+        <p className="text-[15px] font-bold text-[#2d2d2d]">
+          {error || "결과를 불러올 수 없어요."}
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex h-full flex-col bg-white">
+      <Header title={result.meetingName} showMenu />
+
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/* 제목 */}
+        <h1 className="text-[20px] font-bold leading-snug text-[#2d2d2d]">
+          현재까지{" "}
+          <span className="text-[#f59a58]">
+            {result.submittedParticipants}명
+          </span>
+          의
+          <br />
+          약속 조율 결과예요
+        </h1>
+
+        {/* 정렬 드롭다운 */}
+        <div className="mt-4 flex gap-2">
+          {["전체 참여자", "빠른 시간 순"].map((label) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1 rounded-full bg-[#f4f4f4] px-3 py-1.5 text-[12px] font-semibold text-[#777777]"
+            >
+              {label}
+              <ChevronDown size={14} />
+            </span>
+          ))}
+        </div>
+
+        {/* 결과 카드들 */}
+        <div className="mt-4 flex flex-col gap-3">
+          {result.slots.map((slot) => {
+            const open = expanded.has(slot.id);
+            const names = nameMap.get(slot.id);
+            return (
+              <div
+                key={slot.id}
+                className={[
+                  "rounded-xl border p-4 transition",
+                  slot.isTopRecommendation
+                    ? "border-[#f59a58] bg-[#fff7f0]" // 추천 상위 강조
+                    : "border-[#eeeeee] bg-white",
+                ].join(" ")}
+              >
+                {/* 헤더(날짜/시간) - 누르면 펼치기/접기 */}
+                <button
+                  type="button"
+                  onClick={() => toggle(slot.id)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <span className="text-[15px] font-bold text-[#2d2d2d]">
+                    {formatResultDate(slot.startDate)} {slot.startTime} ~{" "}
+                    {slot.endTime}
+                  </span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-[#9b9b9b] transition ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {/* 가능 라벨 (항상 표시) */}
+                <p className="mt-3 text-[13px] font-bold text-[#e07b34]">
+                  {slot.recommendationLabel}
+                </p>
+
+                {/* 상세 (펼쳤을 때만) */}
+                {open && (
+                  <>
+                    {names && names.available.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {names.available.map((n) => (
+                          <span
+                            key={n}
+                            className="rounded-full bg-[#ffe6d2] px-2.5 py-1 text-[12px] font-semibold text-[#e07b34]"
+                          >
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="mt-3 text-[13px] font-bold text-[#9b9b9b]">
+                      {result.totalParticipants}명 중 {slot.unavailableCount}명
+                      불가능
+                    </p>
+                    {names && names.unavailable.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {names.unavailable.map((n) => (
+                          <span
+                            key={n}
+                            className="rounded-full bg-[#f4f4f4] px-2.5 py-1 text-[12px] font-semibold text-[#9b9b9b]"
+                          >
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 하단 바 */}
+      <div className="shrink-0 border-t border-[#f0f0f0] px-6 pb-6 pt-4">
+        {/* 실시간 등록 현황(초대 화면)으로 */}
+        <button
+          type="button"
+          onClick={() => navigate(`/invite/${inviteToken}`)}
+          className="rounded-full bg-[#f4f4f4] px-3 py-1.5 text-[12px] font-semibold text-[#777777]"
+        >
+          실시간 일정 등록 현황
+        </button>
+
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            aria-label="홈으로"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#f0dccb] text-[#f59a58]"
+          >
+            <Home size={22} />
+          </button>
+          <Button
+            type="button"
+            variant="orange"
+            fullWidth
+            onClick={() => {
+              // TODO: 결과 공유(ResultSharePage / 공유 모달) 연결
+              alert("결과 공유는 5일차에 연결해요");
+            }}
+          >
+            결과 공유하기
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default InviteResultPage;
