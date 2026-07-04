@@ -1,4 +1,7 @@
-import type { Participant } from "../types/participant";
+import type {
+  Participant,
+  SubmitParticipationResponse,
+} from "../types/participant";
 import { request } from "./httpClient";
 
 /**
@@ -14,4 +17,18 @@ export function createParticipant(
     method: "POST",
     body: displayName ? { displayName } : undefined,
   });
+}
+
+/**
+ * 본인 응답 완료 처리
+ * POST /api/meetings/{inviteToken}/availabilities/submit
+ * 본문 없음 - 누구인지는 서버가 쿠키(소셜/게스트)로 판단, submitted_at을 채움
+ */
+export function submitMyParticipation(
+  inviteToken: string,
+): Promise<SubmitParticipationResponse> {
+  return request<SubmitParticipationResponse>(
+    `/api/meetings/${inviteToken}/availabilities/submit`,
+    { method: "POST" }, // body 없음
+  );
 }

@@ -58,18 +58,21 @@ export async function request<T>(
     return undefined as T;
   }
 
-  const result = (await response.json()) as ApiResponse<T>;
+  const text = await response.text();
+  const result = text ? (JSON.parse(text) as ApiResponse<T>) : null;
 
   /**
    * HTTP 상태가 실패하거나
    * 백엔드 응답의 success가 false인 경우
    */
-  if (!response.ok || !result.success) {
-    const code = !result.success ? result.error.code : "HTTP_ERROR";
-    const message = !result.success
-      ? result.error.message
-      : `요청 처리에 실패했습니다. (${response.status})`;
-
+  if (!response.ok || !result || !result.success) {
+    const code = result && !result.success ? result.error.code : "HTTP_ERROR";
+    const message =
+      result && !result.success
+        ? result.error.message
+        : response.status === 401 || response.status === 403
+          ? "로그인이 필요해요. 먼저 로그인을 진행해주세요."
+          : `요청 처리에 실패했습니다. (${response.status})`;
     throw new ApiError(message, code, response.status);
   }
 

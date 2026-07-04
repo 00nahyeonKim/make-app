@@ -1,4 +1,4 @@
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import type { ServerSlot } from "../types/meeting";
 import {
   useEffect,
@@ -16,6 +16,7 @@ import { useGuestStore } from "../stores/guestStore";
 import { useAuthStore } from "../stores/authStore";
 import type { AvailabilityInput } from "../types/availability";
 import { submitAvailabilities } from "../api/availabilityApi";
+import { submitMyParticipation } from "../api/participantApi";
 
 // 요일 라벨 - getDay()는 0=일 ~ 6=토 를 돌려줌
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -145,6 +146,7 @@ function getTimeRowBorderClass(minutes: number, lastMinutes: number): string {
 
 function AvailabilityPage() {
   const { inviteToken } = useParams<{ inviteToken: string }>(); // URL의 :inviteToken
+  const navigate = useNavigate();
 
   // 현재 참여자 이름: 비회원이면 게스트, 소셜 로그인이면 사용자 이름
   const guest = useGuestStore((state) => state.guest);
@@ -176,6 +178,13 @@ function AvailabilityPage() {
       )
       .finally(() => setLoading(false));
   }, [inviteToken]);
+
+  // 참여(쿠키) 안 했으면 등록 못 하니 참여 화면으로 보냄
+  useEffect(() => {
+    if (!guest && user) {
+      navigate(`/invite/${inviteToken}/guest`, { replace: true });
+    }
+  }, [guest, user, inviteToken, navigate]);
 
   const timeRows = buildTimeRows(slots); // 세로축(30분 행)
   const hourRows = buildHourRows(timeRows);
@@ -253,13 +262,15 @@ function AvailabilityPage() {
 
     setSubmitting(true);
     try {
-      const result = await submitAvailabilities(inviteToken, {
+      await submitAvailabilities(inviteToken, {
         availabilities,
       });
-      // TODO: 저장 성공 후 "응답 완료" 처리 + 결과 화면으로 이동
-      alert(`저장 완료! (${result.updatedCount}건 반영)`);
+      await submitMyParticipation(inviteToken);
+      navigate(`/invite/${inviteToken}`);
     } catch (e) {
-      alert(getApiErrorMessage(e, "저장에 실패했어요. 다시 시도해주세요."));
+      alert(
+        getApiErrorMessage(e, "응답 완료에 실패했어요. 다시 시도해주세요."),
+      );
     } finally {
       setSubmitting(false); // 성공/실패와 무관하게 버튼 다시 활성화
     }

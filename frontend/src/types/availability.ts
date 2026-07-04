@@ -36,8 +36,8 @@ export type AvailabilitySlotStatus = {
   endDate: string;
   startTime: string;
   endTime: string;
-  availabileParticipants: ParticipantAvailability[];
-  unavailbileParticipants: ParticipantAvailability[];
+  availableParticipants: ParticipantAvailability[];
+  unavailableParticipants: ParticipantAvailability[];
 };
 
 // GET /api/meetings/{inviteToken}/availabilities 응답 data
