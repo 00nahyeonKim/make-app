@@ -42,8 +42,38 @@ function toTimeLabel(minutes: number): string {
 }
 
 // 셀(슬롯 + 시작분)을 하나의 문자열 키로. 선택 Set에 담는 값.
-function cellKey(slotId: number, minutes: number): string {
-  return `${slotId}|${minutes}`;
+function cellKey(slotId: number, date: string, minutes: number): string {
+  return `${slotId}|${date}|${minutes}`;
+}
+
+type DayColumn = {
+  slotId: number; // 원본 후보 슬롯 id
+  date: string; // 이 컬럼의 날짜 "YYYY-MM-DD"
+  startTime: string;
+  endTime: string;
+};
+
+// 기간 슬롯(startDate~endDate)을 하루씩 컬럼으로 펼침
+function buildDayColumns(slots: ServerSlot[]): DayColumn[] {
+  const columns: DayColumn[] = [];
+  for (const slot of slots) {
+    const [sy, sm, sd] = slot.startDate.split("-").map(Number);
+    const [ey, em, ed] = slot.endDate.split("-").map(Number);
+    const cur = new Date(sy, sm - 1, sd);
+    const last = new Date(ey, em - 1, ed);
+    while (cur <= last) {
+      const mm = String(cur.getMonth() + 1).padStart(2, "0");
+      const dd = String(cur.getDate()).padStart(2, "0");
+      columns.push({
+        slotId: slot.id,
+        date: `${cur.getFullYear()}-${mm}-${dd}`,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      });
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return columns;
 }
 
 // 세로축(30분 행) 계산: 모든 슬롯을 통틀어 가장 이른 시작 ~ 가장 이른 종료
@@ -104,17 +134,18 @@ function AvailabilityPage() {
   const timeRows = buildTimeRows(slots); // 세로축(30분 행)
   const hourRows = buildHourRows(timeRows);
   const lastMinutes = timeRows[timeRows.length - 1]; // 그리드 맨 아래 행의 분
+  const dayColumns = buildDayColumns(slots);
 
   // (슬롯, 시작분) 칸이 선택 가능한가? = 그 30분이 슬롯의 시간 범위 안인가
-  const isSelectable = (slot: ServerSlot, minutes: number): boolean => {
+  const isSelectable = (col: DayColumn, minutes: number): boolean => {
     return (
-      toMinutes(slot.startTime) <= minutes && minutes < toMinutes(slot.endTime)
+      toMinutes(col.startTime) <= minutes && minutes < toMinutes(col.endTime)
     );
   };
 
   // 한 칸을 "현재 모드" 대로 칠함 (add=채우기 / remove=지우기)
-  const paintCell = (slotId: number, minutes: number) => {
-    const key = cellKey(slotId, minutes);
+  const paintCell = (slotId: number, date: string, minutes: number) => {
+    const key = cellKey(slotId, date, minutes);
     setSelectedCells((prev) => {
       const next = new Set(prev); // * 항상 새 Set을 만듬
       if (dragModeRef.current === "add") next.add(key);
@@ -127,15 +158,16 @@ function AvailabilityPage() {
   const handlePointerDown = (
     e: ReactPointerEvent<HTMLButtonElement>,
     slotId: number,
+    date: string,
     minutes: number,
   ) => {
     e.preventDefault(); // 드래그 중 글자/이미지가 선택되는 것 방지
     draggingRef.current = true;
     // 시작 칸이 이미 선택돼 있으면 "지우기", 비어있으면 "채우기"
-    dragModeRef.current = selectedCells.has(cellKey(slotId, minutes))
+    dragModeRef.current = selectedCells.has(cellKey(slotId, date, minutes))
       ? "remove"
       : "add";
-    paintCell(slotId, minutes); // 누른 칸을 바로 반영(=클릭 한 번도 동작)
+    paintCell(slotId, date, minutes); // 누른 칸을 바로 반영(=클릭 한 번도 동작)
   };
 
   // ② 끌기 / ③ 뗌: 칸은 손가락을 "잡아두기" 때문에(터치) window에서 추적
@@ -146,7 +178,11 @@ function AvailabilityPage() {
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const cell = el?.closest<HTMLElement>("[data-slot]");
       if (!cell) return; // 회색 칸/빈 영역이면 무시
-      paintCell(Number(cell.dataset.slot), Number(cell.dataset.minute));
+      paintCell(
+        Number(cell.dataset.slot),
+        String(cell.dataset.date),
+        Number(cell.dataset.minute),
+      );
     };
     const handleUp = () => {
       draggingRef.current = false; // 손을 떼면 드래그 끝
@@ -161,7 +197,7 @@ function AvailabilityPage() {
 
   // < > 버튼: 컬럼 영역을 한 칸 너비만큼 좌/우로 부드럽게 스크롤
   const scrollColumns = (direction: 1 | -1) => {
-    columnsRef.current?.scrollBy({ left: direction * 88, behavior: "smooth" });
+    columnsRef.current?.scrollBy({ left: direction * 112, behavior: "smooth" });
   };
 
   if (loading) {
@@ -192,25 +228,27 @@ function AvailabilityPage() {
         </h1>
       </div>
 
-      {/* 날짜 넘기기 < > (그리드 양옆에 배치) */}
-      <div className="mt-3 flex items-center justify-between px-4">
-        <button
-          type="button"
-          onClick={() => scrollColumns(-1)}
-          aria-label="이전 날짜"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <button
-          type="button"
-          onClick={() => scrollColumns(1)}
-          aria-label="다음 날짜"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
+      {dayColumns.length > 3 && (
+        <div className="mt-3 flex items-center justify-between px-4">
+          {/* 날짜 넘기기 < > (그리드 양옆에 배치) */}
+          <button
+            type="button"
+            onClick={() => scrollColumns(-1)}
+            aria-label="이전 날짜"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollColumns(1)}
+            aria-label="다음 날짜"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
 
       {/* 그리드 (세로 스크롤) */}
       <div className="flex-1 overflow-y-auto px-6 pb-4">
@@ -250,20 +288,20 @@ function AvailabilityPage() {
               ref={columnsRef}
               className="scrollbar-hide flex min-w-0 overflow-x-auto"
             >
-              {slots.map((slot) => (
+              {dayColumns.map((col) => (
                 <div
-                  key={slot.id}
+                  key={`${col.slotId}-${col.date}`}
                   className="flex w-28 shrink-0 flex-col border-l border-[#f3b682]"
                 >
                   {/* 컬럼 헤더(날짜) */}
                   <div className="flex h-8 shrink-0 items-center justify-center border-b border-[#f3b682] bg-[#fafafa] text-[12px] font-bold text-[#555555]">
-                    {formatColumnDate(slot.startDate)}
+                    {formatColumnDate(col.date)}
                   </div>
 
                   {/* 시간 칸들 */}
                   <div className="flex flex-col">
                     {timeRows.map((minutes) => {
-                      const selectable = isSelectable(slot, minutes);
+                      const selectable = isSelectable(col, minutes);
                       const borderClass = getTimeRowBorderClass(
                         minutes,
                         lastMinutes,
@@ -279,17 +317,18 @@ function AvailabilityPage() {
                       }
 
                       const selected = selectedCells.has(
-                        cellKey(slot.id, minutes),
+                        cellKey(col.slotId, col.date, minutes),
                       );
 
                       return (
                         <button
                           key={minutes}
                           type="button"
-                          data-slot={slot.id}
+                          data-slot={col.slotId}
+                          data-date={col.date}
                           data-minute={minutes}
                           onPointerDown={(e) =>
-                            handlePointerDown(e, slot.id, minutes)
+                            handlePointerDown(e, col.slotId, col.date, minutes)
                           }
                           className={[
                             "block h-8 w-full shrink-0 box-border border-[#f3b682] touch-none appearance-none p-0 transition",

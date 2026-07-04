@@ -294,11 +294,6 @@ function MeetingSlotPage() {
       endTime,
     });
     setError("");
-
-    // 추가 후 선택 초기화
-    setSelectedDate("");
-    setRangeStart("");
-    setRangeEnd("");
   };
 
   // 다음 버튼 -> 모임 생성 API 호출
