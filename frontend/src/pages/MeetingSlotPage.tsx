@@ -26,14 +26,37 @@ function toDateString(year: number, month: number, day: number): string {
 }
 
 // 화면용 슬롯(DraftSlot[])을 서버용(CandidateSlot[])으로 변환
-// 백엔드가 startDate~endDate 기간을 그대로 받으므로 펼치지 않고 1:1 매핑
+// 기간(slotDate~endDate) 슬롯은 하루씩 펼쳐 하루짜리 슬롯 여러 개로 보냄
+// 서버 응답 (AVAILABILITIES)은 슬롯(candidateSlotId) 단위로만 저장되므로
+// 하루 = 슬롯 1개여야 참여자가 날짜별로 가능/불가능을 따로 남길 수 있음
 function toCandidateSlots(slots: DraftSlot[]): CandidateSlot[] {
-  return slots.map((slot) => ({
-    startDate: slot.slotDate, // UI의 slotDate -> 서버의 startDate
-    endDate: slot.endDate,
-    startTime: slot.startTime,
-    endTime: slot.endTime,
-  }));
+  const END_OF_DAY = "23:59"; // LocalTIme엔 24:00이 없어서 하루의 끝을 "23:59"로 표현
+  const result: CandidateSlot[] = [];
+  for (const slot of slots) {
+    const [sy, sm, sd] = slot.slotDate.split("-").map(Number);
+    const [ey, em, ed] = slot.endDate.split("-").map(Number);
+    const cur = new Date(sy, sm - 1, sd);
+    const last = new Date(ey, em - 1, ed);
+    while (cur <= last) {
+      const date = toDateString(
+        cur.getFullYear(),
+        cur.getMonth(),
+        cur.getDate(),
+      );
+       const isFirst = date === slot.slotDate; // 기간의 첫날인가
+       const isLast = date === slot.endDate; // 기간의 마지막날인가
+      result.push({
+        startDate: date, // 하루짜리라 startDate == endDate
+        endDate: date,
+        // 첫날만 시작시간부터, 나머지 날은 00:00부터
+        startTime: isFirst ? slot.startTime : "00:00",
+        // 마지막날만 종료시간까지, 나머지 날은 하루 끝(23:59)까지
+        endTime: isLast ? slot.endTime : END_OF_DAY,
+      });
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return result;
 }
 
 // 달력 칸 배열: 1일 앞의 빈칸(null) + 1일~말일

@@ -14,6 +14,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Button from "../components/Button";
 import { useGuestStore } from "../stores/guestStore";
 import { useAuthStore } from "../stores/authStore";
+import type { AvailabilityInput } from "../types/availability";
+import { submitAvailabilities } from "../api/availabilityApi";
 
 // 요일 라벨 - getDay()는 0=일 ~ 6=토 를 돌려줌
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -46,6 +48,42 @@ function cellKey(slotId: number, date: string, minutes: number): string {
   return `${slotId}|${date}|${minutes}`;
 }
 
+// 고른 칸들(Set)을 서버가 원하는 슬롯 단위 배열로 변환
+// selectedCells 원소는 "slotId|date|minutes" 형태의 키
+function buildAvailabilites(
+  slots: ServerSlot[],
+  selectedCells: Set<string>,
+): AvailabilityInput[] {
+  // 1) slotId 별로 "고른 시작분"들을 모음
+  const pickedBySlot = new Map<number, number[]>();
+  for (const key of selectedCells) {
+    const [slotIdStr, , minuteStr] = key.split("|"); // 가운데(date)는 안 씀
+    const slotId = Number(slotIdStr);
+    const minute = Number(minuteStr);
+    const list = pickedBySlot.get(slotId) ?? [];
+    list.push(minute);
+    pickedBySlot.set(slotId, list);
+  }
+
+  // 2) 슬롯마다 응답 1건을 만든다 (안 고른 슬롯도 UNAVAILABLE로 명시)
+  return slots.map((slot): AvailabilityInput => {
+    const picked = pickedBySlot.get(slot.id) ?? [];
+    if (picked.length === 0) {
+      return { candidateSlotId: slot.id, status: "UNAVAILABLE" };
+    }
+    // 고른 30분 칸들의 최소 시작 ~ (최대 시작 + 30분)을 가용 범위로
+    const slotEnd = toMinutes(slot.endTime); // 이 슬롯의 종료(분)
+    const start = Math.min(...picked);
+    const end = Math.min(Math.max(...picked) + STEP, slotEnd); // 슬롯 끝을 못 넘게
+    return {
+      candidateSlotId: slot.id,
+      status: "AVAILABLE",
+      startTime: toTimeLabel(start), // 예) 780 -> "13:00"
+      endTime: toTimeLabel(end), // 예) 840 -> "14:00"
+    };
+  });
+}
+
 type DayColumn = {
   slotId: number; // 원본 후보 슬롯 id
   date: string; // 이 컬럼의 날짜 "YYYY-MM-DD"
@@ -73,6 +111,13 @@ function buildDayColumns(slots: ServerSlot[]): DayColumn[] {
       cur.setDate(cur.getDate() + 1);
     }
   }
+  // 날짜 빠른 순 정렬 (같은 날짜면 시작 시간 순)
+  // "YYYY-MM-DD" / "HH-mm"는 문자열 비교가 곧 시간 순서라 localeCompare로 충분
+  columns.sort((a, b) =>
+    a.date === b.date
+      ? a.startTime.localeCompare(b.startTime)
+      : a.date.localeCompare(b.date),
+  );
   return columns;
 }
 
@@ -110,6 +155,7 @@ function AvailabilityPage() {
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set()); // 내가 고른 칸들
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false); // 저장 요청 중인가
 
   // 가로 스크롤(날짜 넘기기)에 쓸 컬럼들을 감싼 div를 가리키는 손잡이
   const columnsRef = useRef<HTMLDivElement>(null);
@@ -200,6 +246,25 @@ function AvailabilityPage() {
     columnsRef.current?.scrollBy({ left: direction * 112, behavior: "smooth" });
   };
 
+  // 등록하기: 고른 칸들을 변환해서 서버에 저장(PUT)
+  const handleSubmit = async () => {
+    if (!inviteToken) return;
+    const availabilities = buildAvailabilites(slots, selectedCells);
+
+    setSubmitting(true);
+    try {
+      const result = await submitAvailabilities(inviteToken, {
+        availabilities,
+      });
+      // TODO: 저장 성공 후 "응답 완료" 처리 + 결과 화면으로 이동
+      alert(`저장 완료! (${result.updatedCount}건 반영)`);
+    } catch (e) {
+      alert(getApiErrorMessage(e, "저장에 실패했어요. 다시 시도해주세요."));
+    } finally {
+      setSubmitting(false); // 성공/실패와 무관하게 버튼 다시 활성화
+    }
+  };
+
   if (loading) {
     return (
       <LoadingSpinner fullScreen message="후보 시간을 불러오는 중이에요" />
@@ -221,128 +286,135 @@ function AvailabilityPage() {
       <Header title="일정 등록" showMenu />
 
       <div className="px-6 pt-5">
-        <h1 className="text-[17px] font-black leading-snug text-[#2d2d2d]">
+        <h1 className="text-[20px] font-bold leading-snug text-[#2d2d2d]">
           {displayName ? `${displayName}님의 ` : ""}되는 시간을
           <br />
           일정으로 선택해주세요
         </h1>
       </div>
 
-      {dayColumns.length > 3 && (
-        <div className="mt-3 flex items-center justify-between px-4">
-          {/* 날짜 넘기기 < > (그리드 양옆에 배치) */}
-          <button
-            type="button"
-            onClick={() => scrollColumns(-1)}
-            aria-label="이전 날짜"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollColumns(1)}
-            aria-label="다음 날짜"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      )}
-
       {/* 그리드 (세로 스크롤) */}
-      <div className="flex-1 overflow-y-auto px-6 pb-4">
+      <div className="flex-1 overflow-y-auto pt-6 px-8 pb-4">
         {timeRows.length === 0 ? (
           <p className="mt-10 text-center text-sm font-semibold text-[#c4c4c4]">
             아직 후보 시간이 없어요.
           </p>
         ) : (
-          // select-none: 마우스로 드래그할 때 글자가 선택되지 않게
-          <div className="flex w-fit max-w-full select-none overflow-hidden rounded-xl border border-[#f3b682]">
-            {/* 왼쪽 고정 시간축 */}
-            <div className=" w-7 shrink-0">
-              {/* 날짜 헤더와 높이, 보더를맞춘 빈 헤더 칸 */}
-              <div className="h-8 shrink-0 border-b border-[#f3b682] bg-[#fafafa]" />
-
-              {/* 30분 두 칸을 1시간 한 칸으로 합침 */}
-              <div className="flex flex-col">
-                {hourRows.map((minutes, index) => {
-                  const isLastHour = index === hourRows.length - 1;
-                  return (
-                    <div
-                      key={minutes}
-                      className={[
-                        "flex h-16 shrink-0 items-center justify-end pr-2 text-[12px] font-semibold leading-none text-[#9b9b9b]",
-                        isLastHour ? "" : "border-b border-[#f3b682]",
-                      ].join(" ")}
-                    >
-                      {minutes / 60}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 날짜 컬럼들 (가로 스크롤) - < > 버튼이 이 영역을 움직인다 */}
-            <div
-              ref={columnsRef}
-              className="scrollbar-hide flex min-w-0 overflow-x-auto"
-            >
-              {dayColumns.map((col) => (
-                <div
-                  key={`${col.slotId}-${col.date}`}
-                  className="flex w-28 shrink-0 flex-col border-l border-[#f3b682]"
+          <div className="mx-auto w-fit max-w-full">
+            {/* 날짜 넘기기 < > : 그리드와 같은 폭, 양 끝 */}
+            {dayColumns.length > 3 && (
+              <div className="mb-2 flex w-full items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => scrollColumns(-1)}
+                  aria-label="이전 날짜"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
                 >
-                  {/* 컬럼 헤더(날짜) */}
-                  <div className="flex h-8 shrink-0 items-center justify-center border-b border-[#f3b682] bg-[#fafafa] text-[12px] font-bold text-[#555555]">
-                    {formatColumnDate(col.date)}
-                  </div>
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollColumns(1)}
+                  aria-label="다음 날짜"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] text-[#9b9b9b] transition hover:bg-[#f5f5f5]"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
 
-                  {/* 시간 칸들 */}
-                  <div className="flex flex-col">
-                    {timeRows.map((minutes) => {
-                      const selectable = isSelectable(col, minutes);
-                      const borderClass = getTimeRowBorderClass(
-                        minutes,
-                        lastMinutes,
-                      );
+            {/* 그리드 본체 */}
+            <div className="flex w-fit max-w-full select-none overflow-hidden rounded-xl border border-[#f3b682]">
+              {/* 왼쪽 고정 시간축 */}
+              <div className=" w-7 shrink-0">
+                {/* 날짜 헤더와 높이, 보더를맞춘 빈 헤더 칸 */}
+                <div className="h-8 shrink-0 border-b border-[#f3b682] bg-[#fafafa]" />
 
-                      if (!selectable) {
+                {/* 30분 두 칸을 1시간 한 칸으로 합침 */}
+                <div className="flex flex-col">
+                  {hourRows.map((minutes, index) => {
+                    const isLastHour = index === hourRows.length - 1;
+                    return (
+                      <div
+                        key={minutes}
+                        className={[
+                          "flex h-16 shrink-0 items-center justify-end pr-2 text-[12px] font-semibold leading-none text-[#9b9b9b]",
+                          isLastHour ? "" : "border-b border-[#f3b682]",
+                        ].join(" ")}
+                      >
+                        {minutes / 60}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 날짜 컬럼들 (가로 스크롤) - < > 버튼이 이 영역을 움직인다 */}
+              <div
+                ref={columnsRef}
+                className="scrollbar-hide flex min-w-0 overflow-x-auto"
+              >
+                {dayColumns.map((col) => (
+                  <div
+                    key={`${col.slotId}-${col.date}`}
+                    className="flex w-28 shrink-0 flex-col border-l border-[#f3b682]"
+                  >
+                    {/* 컬럼 헤더(날짜) */}
+                    <div className="flex h-8 shrink-0 items-center justify-center border-b border-[#f3b682] bg-[#fafafa] text-[12px] font-bold text-[#555555]">
+                      {formatColumnDate(col.date)}
+                    </div>
+
+                    {/* 시간 칸들 */}
+                    <div className="flex flex-col">
+                      {timeRows.map((minutes) => {
+                        const selectable = isSelectable(col, minutes);
+                        const borderClass = getTimeRowBorderClass(
+                          minutes,
+                          lastMinutes,
+                        );
+
+                        if (!selectable) {
+                          return (
+                            <div
+                              key={minutes}
+                              className={`h-8 w-full shrink-0 box-border border-[#f3b682] bg-[#eeeeee] ${borderClass}`}
+                            />
+                          );
+                        }
+
+                        const selected = selectedCells.has(
+                          cellKey(col.slotId, col.date, minutes),
+                        );
+
                         return (
-                          <div
+                          <button
                             key={minutes}
-                            className={`h-8 w-full shrink-0 box-border border-[#f3b682] bg-[#eeeeee] ${borderClass}`}
+                            type="button"
+                            data-slot={col.slotId}
+                            data-date={col.date}
+                            data-minute={minutes}
+                            onPointerDown={(e) =>
+                              handlePointerDown(
+                                e,
+                                col.slotId,
+                                col.date,
+                                minutes,
+                              )
+                            }
+                            className={[
+                              "block h-8 w-full shrink-0 box-border border-[#f3b682] touch-none appearance-none p-0 transition",
+                              borderClass,
+                              selected
+                                ? "bg-[#ffdbb9]"
+                                : "bg-white hover:bg-[#fff3e9]",
+                            ].join(" ")}
                           />
                         );
-                      }
-
-                      const selected = selectedCells.has(
-                        cellKey(col.slotId, col.date, minutes),
-                      );
-
-                      return (
-                        <button
-                          key={minutes}
-                          type="button"
-                          data-slot={col.slotId}
-                          data-date={col.date}
-                          data-minute={minutes}
-                          onPointerDown={(e) =>
-                            handlePointerDown(e, col.slotId, col.date, minutes)
-                          }
-                          className={[
-                            "block h-8 w-full shrink-0 box-border border-[#f3b682] touch-none appearance-none p-0 transition",
-                            borderClass,
-                            selected
-                              ? "bg-[#ffdbb9]"
-                              : "bg-white hover:bg-[#fff3e9]",
-                          ].join(" ")}
-                        />
-                      );
-                    })}
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -354,13 +426,14 @@ function AvailabilityPage() {
           type="button"
           variant="orange"
           fullWidth
-          disabled={selectedCount === 0}
-          onClick={() => {
-            // TODO: 선택된 칸들을 서버에 저장
-            alert(`${selectedCount}칸 선택!`);
-          }}
+          disabled={selectedCount === 0 || submitting}
+          onClick={handleSubmit}
         >
-          {selectedCount > 0 ? "등록하기" : "가능한 시간을 선택해주세요"}
+          {submitting
+            ? "저장 중..."
+            : selectedCount > 0
+              ? "등록하기"
+              : "가능한 시간을 선택해주세요"}
         </Button>
       </div>
     </section>
