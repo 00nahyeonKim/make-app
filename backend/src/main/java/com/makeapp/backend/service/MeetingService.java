@@ -10,6 +10,7 @@ import com.makeapp.backend.dto.response.MeetingCreateResponse;
 import com.makeapp.backend.dto.response.MeetingDetailResponse;
 import com.makeapp.backend.entity.CandidateSlot;
 import com.makeapp.backend.entity.Meeting;
+import com.makeapp.backend.entity.MeetingStatus;
 import com.makeapp.backend.entity.User;
 import com.makeapp.backend.exception.CustomException;
 import com.makeapp.backend.exception.ErrorCode;
@@ -68,5 +69,40 @@ public class MeetingService {
         Meeting meeting = meetingRepository.findByResultToken(resultToken)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
         return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting));
+    }
+
+    public MeetingDetailResponse confirm(Long meetingId, Long userId, Long confirmedSlotId) { // confirmedSlotId는 주최자가 확정으로 누른 후보 시간. 
+        Meeting meeting = findAndCheckOwner(meetingId, userId); // 존재 + 주최자 확인
+        if (meeting.getStatus() == MeetingStatus.CONFIRMED) {
+                throw new CustomException(ErrorCode.MEETING_ALREADY_CONFIRMED);
+        }
+        CandidateSlot slot = candidateSlotRepository.findById(confirmedSlotId)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_SLOT));
+        meeting.confirm(slot);
+        return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting)); // 확정 결과 반환
+    }
+
+    // 모임 만료 - 주최자만 가능, 확정된 모임은 만료 불가
+    public void expire(Long meetingId, Long userId) {
+        Meeting meeting = findAndCheckOwner(meetingId, userId);
+        if (meeting.getStatus() == MeetingStatus.CONFIRMED) {
+            throw new CustomException(ErrorCode.MEETING_ALREADY_CONFIRMED);
+        }
+        meeting.expire();
+    }
+
+    // 모임 삭제 - 주최자만 가능, 물리 삭제 대신 Soft Delete
+    public void cancel(Long meetingId, Long userId) {
+        findAndCheckOwner(meetingId, userId).delete(); // deleted_at만 기록 -> 조회에서 사라짐
+    }
+
+    // 모임이 존재하고, 요청자가 주최자인지 검사하는 공통 헬퍼
+    private Meeting findAndCheckOwner(Long meetingId, Long userId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
+        if (!meeting.getOwner().getId().equals(userId)) {
+                throw new CustomException(ErrorCode.FORBIDDEN); // 주최자가 아니면 403
+        }
+        return meeting;
     }
 }

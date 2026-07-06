@@ -37,11 +37,11 @@ type StatusSlot = AvailabilitiesStatus["slots"][number];
 // 참여자에 startTime/endTime이 없으면 슬롯 전체 가능으로 본다
 function countAvailable(slot: StatusSlot, minutes: number): number {
   return slot.availableParticipants.filter((p) => {
-    const start = p.startTime
-      ? toMinutes(p.startTime)
-      : toMinutes(slot.startTime);
-    const end = p.endTime ? toMinutes(p.endTime) : toMinutes(slot.endTime);
-    return start <= minutes && minutes < end;
+    return p.timeRanges.some((range) => {
+      const start = toMinutes(range.startTime);
+      const end = toMinutes(range.endTime);
+      return start <= minutes && minutes < end;
+    });
   }).length;
 }
 

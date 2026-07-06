@@ -70,17 +70,38 @@ function buildAvailabilites(
   return slots.map((slot): AvailabilityInput => {
     const picked = pickedBySlot.get(slot.id) ?? [];
     if (picked.length === 0) {
-      return { candidateSlotId: slot.id, status: "UNAVAILABLE" };
+      return { candidateSlotId: slot.id, status: "UNAVAILABLE", timeRanges: [] };
     }
     // 고른 30분 칸들의 최소 시작 ~ (최대 시작 + 30분)을 가용 범위로
     const slotEnd = toMinutes(slot.endTime); // 이 슬롯의 종료(분)
-    const start = Math.min(...picked);
-    const end = Math.min(Math.max(...picked) + STEP, slotEnd); // 슬롯 끝을 못 넘게
+    const sorted = [...new Set(picked)].sort((a, b) => a - b);
+    const timeRanges: { startTime: string; endTime: string }[] = [];
+    let rangeStart = sorted[0];
+    let previous = sorted[0];
+
+    for (let i = 1; i < sorted.length; i++) {
+      const current = sorted[i];
+      if (current === previous + STEP) {
+        previous = current;
+        continue;
+      }
+
+      timeRanges.push({
+        startTime: toTimeLabel(rangeStart),
+        endTime: toTimeLabel(Math.min(previous + STEP, slotEnd)),
+      });
+      rangeStart = current;
+      previous = current;
+    }
+
+    timeRanges.push({
+      startTime: toTimeLabel(rangeStart),
+      endTime: toTimeLabel(Math.min(previous + STEP, slotEnd)),
+    });
     return {
       candidateSlotId: slot.id,
       status: "AVAILABLE",
-      startTime: toTimeLabel(start), // 예) 780 -> "13:00"
-      endTime: toTimeLabel(end), // 예) 840 -> "14:00"
+      timeRanges,
     };
   });
 }

@@ -1,5 +1,8 @@
 package com.makeapp.backend.controller;
 
+import java.util.Map;
+
+import org.apache.catalina.connector.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -54,4 +57,27 @@ public class MeetingController {
         @PathVariable String resultToken) {
             return ResponseEntity.ok(ApiResponse.ok(meetingService.findByResultToken(resultToken)));
         }
+
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<ApiResponse<MeetingDetailResponse>> confirm(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body, // 요청 본문 JSON을 Map으로 받는다는 뜻. 대략 "confirmedSlotId": 10 같은 데이터가 넘어오고 
+            Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.ok(
+            meetingService.confirm(id, getLoginUserId(auth), body.get("confirmedSlotId")))); // 확정된 모임 정보 반환
+    }
+
+    @PostMapping("{id}/expire")
+    public ResponseEntity<ApiResponse<Void>> expire(
+            @PathVariable Long id, Authentication auth) {
+        meetingService.expire(id, getLoginUserId(auth));
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @PostMapping("{id}/cancel")
+    public ResponseEntity<Void> cancel(
+            @PathVariable Long id, Authentication auth) {
+        meetingService.cancel(id, getLoginUserId(auth));
+        return ResponseEntity.noContent().build();
+    }
 }

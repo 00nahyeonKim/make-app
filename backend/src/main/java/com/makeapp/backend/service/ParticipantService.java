@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.makeapp.backend.dto.response.ParticipantResponse;
+import com.makeapp.backend.entity.AvailabilityTimeRange;
 import com.makeapp.backend.entity.Meeting;
 import com.makeapp.backend.entity.MeetingStatus;
 import com.makeapp.backend.entity.Participant;
@@ -115,6 +116,7 @@ public class ParticipantService {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("candidateSlotId", a.getCandidateSlot().getId());
                     item.put("status", a.getStatus().name());
+                    item.put("timeRanges", timeRangeResponse(a.getTimeRanges()));
                     return item;
                 }).toList();
 
@@ -127,4 +129,14 @@ public class ParticipantService {
                 return response;
     }
 
+    private List<Map<String, Object>> timeRangeResponse(List<AvailabilityTimeRange> ranges) {
+        return ranges.stream()
+                .map(range -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("startTime", range.getStartTime().toString());
+                    item.put("endTime", range.getEndTime().toString());
+                    return item;
+                })
+                .toList();
+    }
 }
