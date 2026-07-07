@@ -43,8 +43,8 @@ function toCandidateSlots(slots: DraftSlot[]): CandidateSlot[] {
         cur.getMonth(),
         cur.getDate(),
       );
-       const isFirst = date === slot.slotDate; // 기간의 첫날인가
-       const isLast = date === slot.endDate; // 기간의 마지막날인가
+      const isFirst = date === slot.slotDate; // 기간의 첫날인가
+      const isLast = date === slot.endDate; // 기간의 마지막날인가
       result.push({
         startDate: date, // 하루짜리라 startDate == endDate
         endDate: date,
@@ -159,6 +159,11 @@ function MeetingSlotPage() {
     todayObj.getDate(),
   );
 
+  // 현재 시각을 "HH:mm"로 (과거 시간 선택 막기)
+  const now = `${String(todayObj.getHours()).padStart(2, "0")}:${String(
+    todayObj.getMinutes(),
+  ).padStart(2, "0")}`;
+
   // 상태 선언 - 이 화면에서만 쓰므로 useState
   const [viewYear, setViewYear] = useState(todayObj.getFullYear());
   const [viewMonth, setViewMonth] = useState(todayObj.getMonth()); // 0~11
@@ -166,7 +171,7 @@ function MeetingSlotPage() {
   const [selectionMode, setSelectionMode] = useState<"single" | "range">(
     "single",
   ); // 하루/기간
-  const [selectedDate, setSelectedDate] = useState(""); // single 모드에서 고른 날짜
+  const [selectedDate, setSelectedDate] = useState(today); // single 모드에서 고른 날짜
   const [rangeStart, setRangeStart] = useState(""); // range 시작 날짜
   const [rangeEnd, setRangeEnd] = useState(""); // range 종료 날짜
   const [startTime, setStartTime] = useState("13:00");
@@ -200,7 +205,7 @@ function MeetingSlotPage() {
   // 선택 모드 변경(하루/기간) - 바꿀 때 기존 선택은 초기화
   const handleChangeMode = (mode: "single" | "range") => {
     setSelectionMode(mode);
-    setSelectedDate("");
+    setSelectedDate(today); // 하루 모드로 돌아오면 오늘 날짜 기본 선택
     setRangeStart("");
     setRangeEnd("");
     setError("");
@@ -284,8 +289,14 @@ function MeetingSlotPage() {
         setError("날짜를 먼저 선택해주세요.");
         return;
       }
+
       slotDate = selectedDate;
       endDate = selectedDate; // 하루모드: 시작날짜 = 종료날짜
+      // 오늘 날짜를 골랐다면 현재 시각 이전 시간은 불가
+      if (slotDate === today && startTime < now) {
+        setError("현재 시각 이전 시간은 선택할 수 없어요.");
+        return;
+      }
     } else {
       if (!rangeStart || !rangeEnd) {
         setError("시작 날짜와 종료 날짜를 모두 선택해주세요.");

@@ -4,7 +4,7 @@ import Button from "../components/Button";
 import Header from "../layouts/Header";
 import { useEffect, useState } from "react";
 import { buildInviteUrl } from "../utils/urlBuilder";
-import { Plus, Share2 } from "lucide-react";
+import { Pencil, Plus, Share2 } from "lucide-react";
 import ShareModal from "../components/ShareModal";
 import { useGuestStore } from "../stores/guestStore";
 import type { MeetingDetail } from "../types/meeting";
@@ -214,6 +214,10 @@ function InvitePage() {
       )
     : [];
 
+  // 내(게스트)가 이미 가능 시간을 등록했는지 = 실시간 현황에 내 id가 있는지
+  const hasRegistered =
+    guest !== null && participants.some(([id]) => id === guest.id);
+
   return (
     // relative: ShareModal의 absolute inset-0가 이 영역을 기준으로 덮게 함
     <section className="relative flex h-full flex-col bg-white">
@@ -301,15 +305,17 @@ function InvitePage() {
         )}
       </div>
 
-      {/* 플로팅 + 버튼 */}
-      <button
-        type="button"
-        aria-label="내 가능 시간 등록"
-        onClick={() => navigate(`/invite/${inviteToken}/availability`)}
-        className="absolute bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#f59a58] text-white shadow-lg transition hover:bg-[#ef8840]"
-      >
-        <Plus size={24} />
-      </button>
+      {/* 로그인(참여) 상태에서만 플로팅 노출: 미동록 = 추가(+), 등록완료 = 수정(연필) */}
+      {joined && (
+        <button
+          type="button"
+          aria-label={hasRegistered ? "내 일정 수정" : "내 가능 시간 등록"}
+          onClick={() => navigate(`/invite/${inviteToken}/availability`)}
+          className="absolute bottom-24 right-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#f59a58] text-white shadow-lg transition hover:bg-[#ef8840]"
+        >
+          {hasRegistered ? <Pencil size={22} /> : <Plus size={24} />}
+        </button>
+      )}
 
       {/* 하단: 미참여이면 '참여하기', 참여했으면 '우선순위 보기' */}
       <div className="shrink-0 border-t border-[#f0f0f0] px-6 pb-6 pt-4">
