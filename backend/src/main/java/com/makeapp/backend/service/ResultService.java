@@ -65,7 +65,7 @@ public class ResultService {
             result.put("unavailableCount", (int) unavailable);
             result.put("recommendationLabel", total + "명 중 " + available + "명 가능");
             result.put("durationMinutes", duration);
-            result.put("timeBlocks", timeBlocks(slot, availabilities));
+            // result.put("timeBlocks", timeBlocks(slot, availabilities));
             return result;
         }).toList();
 
