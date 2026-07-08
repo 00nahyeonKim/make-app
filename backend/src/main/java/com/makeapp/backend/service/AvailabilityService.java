@@ -152,27 +152,65 @@ public class AvailabilityService {
     }
 
     private void validateRange(CandidateSlot slot, LocalTime startTime, LocalTime endTime) {
-        if (startTime == null || endTime == null
-                || !startTime.isBefore(endTime)
-                || startTime.isBefore(slot.getStartTime())
-                || endTime.isAfter(slot.getEndTime())) {
+        if (startTime == null || endTime == null) {
+            throw new CustomException(ErrorCode.INVALID_SLOT);
+        }
+
+        if (!isThirtyMinuteStart(startTime) || !isThirtyMinuteEnd(endTime)) {
+            throw new CustomException(ErrorCode.INVALID_SLOT);
+        }
+
+        int slotStart = toStartMinute(slot.getStartTime());
+        int slotEnd = toEndMinute(slot.getEndTime());
+        int rangeStart = toStartMinute(startTime);
+        int rangeEnd = toEndMinute(endTime);
+
+        if (rangeStart >= rangeEnd
+                || rangeStart < slotStart
+                || rangeEnd > slotEnd) {
             throw new CustomException(ErrorCode.INVALID_SLOT);
         }
     }
 
     private void validateNoOverlap(List<AvailabilitySubmitRequest.TimeRangeItem> ranges) {
         List<AvailabilitySubmitRequest.TimeRangeItem> sorted = ranges.stream()
-                .sorted(Comparator.comparing(AvailabilitySubmitRequest.TimeRangeItem::getStartTime))
+                .sorted(Comparator.comparingInt(r -> toStartMinute(r.getStartTime())))
                 .toList();
 
         for (int i = 1; i < sorted.size(); i++) {
-            LocalTime previousEnd = sorted.get(i - 1).getEndTime();
-            LocalTime currentStart = sorted.get(i).getStartTime();
+            int previousEnd = toEndMinute(sorted.get(i - 1).getEndTime());
+            int currentStart = toStartMinute(sorted.get(i).getStartTime());
 
-            if (currentStart.isBefore(previousEnd)) {
+            if (currentStart < previousEnd) {
                 throw new CustomException(ErrorCode.INVALID_SLOT);
             }
         }
+    }
+
+    private int toStartMinute(LocalTime time) {
+        return time.toSecondOfDay() / 60;
+    }
+
+    private int toEndMinute(LocalTime time) {
+        if (isEndOfDay(time)) {
+            return 1440;
+        }
+        return time.toSecondOfDay() / 60;
+    }
+
+    private boolean isEndOfDay(LocalTime time) {
+        return time.equals(LocalTime.of(23, 59))
+                || time.equals(LocalTime.of(23, 59, 59));
+    }
+
+    private boolean isThirtyMinuteStart(LocalTime time) {
+        return time.getSecond() == 0
+                && time.getNano() == 0
+                && (time.getMinute() == 0 || time.getMinute() == 30);
+    }
+
+    private boolean isThirtyMinuteEnd(LocalTime time) {
+        return isEndOfDay(time) || isThirtyMinuteStart(time);
     }
 
     private Participant resolveParticipant(String inviteToken, Authentication auth) {

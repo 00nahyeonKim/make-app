@@ -1,6 +1,5 @@
 package com.makeapp.backend.service;
 
-import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -53,7 +52,7 @@ public class ResultService {
             long unavailable = availabilities.stream()
                     .filter(a -> a.getStatus() == AvailabilityStatus.UNAVAILABLE)
                     .count();
-            int duration = (int) Duration.between(slot.getStartTime(), slot.getEndTime()).toMinutes();
+            int duration = toEndMinute(slot.getEndTime()) - toStartMinute(slot.getStartTime());
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("id", slot.getId());
@@ -65,7 +64,7 @@ public class ResultService {
             result.put("unavailableCount", (int) unavailable);
             result.put("recommendationLabel", total + "명 중 " + available + "명 가능");
             result.put("durationMinutes", duration);
-            // result.put("timeBlocks", timeBlocks(slot, availabilities));
+            result.put("timeBlocks", timeBlocks(slot, availabilities));
             return result;
         }).toList();
 
@@ -109,37 +108,39 @@ public class ResultService {
                 .toList();
 
         List<Map<String, Object>> blocks = new ArrayList<>();
-        LocalTime start = slot.getStartTime();
-        LocalTime slotEnd = slot.getEndTime();
+        int slotStart = toStartMinute(slot.getStartTime());
+        int slotEnd = toEndMinute(slot.getEndTime());
 
-        while (start.isBefore(slotEnd)) {
-            LocalTime end = start.plusMinutes(30);
-            if (end.isAfter(slotEnd)) {
-                end = slotEnd;
-            }
+        if (slotEnd <= slotStart) {
+            return blocks;
+        }
 
-            final LocalTime blockStart = start;
-            final LocalTime blockEnd = end;
+        for (int current = slotStart; current < slotEnd; current += 30) {
+            int blockEnd = Math.min(current + 30, slotEnd);
+            int blockStartMinute = current;
+            int blockEndMinute = blockEnd;
+
             long availableCount = availableResponses.stream()
-                    .filter(a -> coversBlock(a.getTimeRanges(), blockStart, blockEnd))
+                    .filter(a -> coversBlock(a.getTimeRanges(), blockStartMinute, blockEndMinute))
                     .count();
 
             Map<String, Object> block = new LinkedHashMap<>();
-            block.put("startTime", blockStart.toString());
-            block.put("endTime", blockEnd.toString());
+            block.put("startTime", toTimeText(blockStartMinute));
+            block.put("endTime", toTimeText(blockEndMinute));
             block.put("availableCount", (int) availableCount);
             blocks.add(block);
-
-            start = end;
         }
 
         return blocks;
     }
 
-    private boolean coversBlock(List<AvailabilityTimeRange> ranges, LocalTime blockStart, LocalTime blockEnd) {
-        return ranges.stream().anyMatch(range ->
-                !range.getStartTime().isAfter(blockStart)
-                        && !range.getEndTime().isBefore(blockEnd));
+    private boolean coversBlock(List<AvailabilityTimeRange> ranges, int blockStart, int blockEnd) {
+        return ranges.stream().anyMatch(range -> {
+            int rangeStart = toStartMinute(range.getStartTime());
+            int rangeEnd = toEndMinute(range.getEndTime());
+
+            return rangeStart <= blockStart && blockEnd <= rangeEnd;
+        });
     }
 
     private Map<String, Object> confirmedSlotInfo(CandidateSlot slot) {
@@ -150,5 +151,31 @@ public class ResultService {
         response.put("startTime", slot.getStartTime().toString());
         response.put("endTime", slot.getEndTime().toString());
         return response;
+    }
+
+    private int toStartMinute(LocalTime time) {
+        return time.toSecondOfDay() / 60;
+    }
+
+    private int toEndMinute(LocalTime time) {
+        if (isEndOfDay(time)) {
+            return 1440;
+        }
+        return time.toSecondOfDay() / 60;
+    }
+
+    private boolean isEndOfDay(LocalTime time) {
+        return time.equals(LocalTime.of(23, 59))
+                || time.equals(LocalTime.of(23, 59, 59));
+    }
+
+    private String toTimeText(int minute) {
+        if (minute == 1440) {
+            return "24:00";
+        }
+
+        int hour = minute / 60;
+        int min = minute % 60;
+        return String.format("%02d:%02d", hour, min);
     }
 }

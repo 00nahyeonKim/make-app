@@ -61,5 +61,26 @@ public class MeetingCreateRequest {
             if (startTime == null || endTime == null) return true;  // null은 @NotNull이 따로 처리
             return endTime.isAfter(startTime);
         }
+
+        @AssertTrue(message = "시간은 30분 단위여야 합니다.")
+        private boolean isThirtyMinuteUnit() {
+            if (startTime == null || endTime == null) return true;
+            return isThirtyMinuteStart(startTime) && isThirtyMinuteEnd(endTime);
+        }
+
+        private boolean isThirtyMinuteStart(LocalTime time) {
+            return time.getSecond() == 0
+                    && time.getNano() == 0
+                    && (time.getMinute() == 0 || time.getMinute() == 30);
+        }
+
+        private boolean isThirtyMinuteEnd(LocalTime time) {
+            return isEndOfDay(time) || isThirtyMinuteStart(time);
+        }
+
+        private boolean isEndOfDay(LocalTime time) {
+            return time.equals(LocalTime.of(23, 59))
+                    || time.equals(LocalTime.of(23, 59, 59));
+        }
     }
 }
