@@ -129,7 +129,7 @@ public class AuthService {
 
     // 게스트 최초 참가: 초대 토큰의 모임에 닉네임+PIN으로 새 참가자(GUEST)를 만든다
     public Participant guestRegister(String inviteToken, String displayName, String rawPin) {
-        Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
+        Meeting meeting = meetingRepository.findByInviteTokenForUpdate(inviteToken)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND)); // 모임 없으면 404 
         if (meeting.getStatus() == MeetingStatus.EXPIRED) { // 만료된 모임은 참가 불가
             throw new CustomException(ErrorCode.MEETING_EXPIRED);            
@@ -140,6 +140,11 @@ public class AuthService {
         
         if (participantRepository.findByMeetingAndDisplayName(meeting, displayName).isPresent()) {
             throw new CustomException(ErrorCode.PIN_MISMATCH);
+        }
+
+        Integer expectedCount = meeting.getExpectedCount();
+        if (expectedCount != null && participantRepository.countByMeeting(meeting) >= expectedCount) {
+            throw new CustomException(ErrorCode.MEETING_FULL);
         }
         
         String pinHash = passwordEncoder.encode(rawPin);    // PIN을 BCrypt 해시로 변환

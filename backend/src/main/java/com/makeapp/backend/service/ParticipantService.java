@@ -35,7 +35,7 @@ public class ParticipantService {
     private final AvailabilityRepository availabilityRepository;    // 본인 응답(availabilities) 조회용
 
     public ParticipantResponse join(String inviteToken, Long userId, String customDisplayName) {
-        Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
+        Meeting meeting = meetingRepository.findByInviteTokenForUpdate(inviteToken)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
 
         if (meeting.getStatus() == MeetingStatus.EXPIRED) {
@@ -49,6 +49,8 @@ public class ParticipantService {
         if (participantRepository.existsByMeetingAndUser(meeting, user)) {
             throw new CustomException(ErrorCode.DUPLICATE_PARTICIPATION); // 이미 참가했으면 중복 차단
         }
+
+        ensureCapacity(meeting);
 
         String displayName = (customDisplayName != null && !customDisplayName.isBlank())
                 ? customDisplayName
@@ -66,6 +68,13 @@ public class ParticipantService {
                 .type(isOwner ? ParticipantType.LEADER : ParticipantType.MEMBER) // 주최자=LEADER, 그 외=MEMBER
                 .build());
         return ParticipantResponse.of(p);
+    }
+
+    private void ensureCapacity(Meeting meeting) {
+        Integer expectedCount = meeting.getExpectedCount();
+        if (expectedCount != null && participantRepository.countByMeeting(meeting) >= expectedCount) {
+            throw new CustomException(ErrorCode.MEETING_FULL);
+        }
     }
 
     // 모임의 참가자 전체 목록 조회 (참가자 배열 + 집계: 총원/제출완료 수)

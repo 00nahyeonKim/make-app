@@ -11,11 +11,14 @@ import com.makeapp.backend.dto.response.MeetingDetailResponse;
 import com.makeapp.backend.entity.CandidateSlot;
 import com.makeapp.backend.entity.Meeting;
 import com.makeapp.backend.entity.MeetingStatus;
+import com.makeapp.backend.entity.Participant;
+import com.makeapp.backend.entity.ParticipantType;
 import com.makeapp.backend.entity.User;
 import com.makeapp.backend.exception.CustomException;
 import com.makeapp.backend.exception.ErrorCode;
 import com.makeapp.backend.repository.CandidateSlotRepository;
 import com.makeapp.backend.repository.MeetingRepository;
+import com.makeapp.backend.repository.ParticipantRepository;
 import com.makeapp.backend.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ public class MeetingService {
     private final MeetingRepository meetingRepository;
     private final CandidateSlotRepository candidateSlotRepository;
     private final UserRepository userRepository;
+    private final ParticipantRepository participantRepository;
 
     // 모임 생성: 로그인 사용자를 주최자로, 하보 슬롯들과 함께 저장
     public MeetingCreateResponse create(Long userId, MeetingCreateRequest request) {
@@ -42,6 +46,14 @@ public class MeetingService {
                 .expectedCount(request.getExpectedCount())
                 .inviteToken(UUID.randomUUID().toString())
                 .resultToken(UUID.randomUUID().toString())
+                .build());
+
+        // 설정한 정원은 방장을 포함한 전체 참가자 수이므로 생성 즉시 방장을 등록한다.
+        participantRepository.save(Participant.builder()
+                .meeting(meeting)
+                .user(user)
+                .displayName(user.getName())
+                .type(ParticipantType.LEADER)
                 .build());
 
         request.getCandidateSlots().forEach(s -> candidateSlotRepository.save(CandidateSlot.builder()

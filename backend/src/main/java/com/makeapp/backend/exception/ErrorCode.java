@@ -17,6 +17,7 @@ public enum ErrorCode {
     //모임
     MEETING_NOT_FOUND(404, "MEETING_NOT_FOUND", "모임을 찾을 수 없습니다."),
     MEETING_ALREADY_CONFIRMED(409, "MEETING_ALREADY_CONFIRMED", "이미 확정된 모임입니다."),
+    MEETING_FULL(409, "MEETING_FULL", "참여 인원이 마감된 모임입니다."),
     MEETING_EXPIRED(410, "MEETING_EXPIRED", "만료된 모임입니다."),
     INVALID_SLOT(400, "INVALID_SLOT", "유효하지 않은 시간 슬롯입니다."),
 
