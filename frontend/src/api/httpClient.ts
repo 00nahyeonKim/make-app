@@ -1,7 +1,11 @@
+import { useAuthStore } from "../stores/authStore";
 import type { ApiResponse } from "../types/api";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+
+// refresh 자체가 401일 때 다시 refresh를 부르지 않도록 경로를 상수로 둠
+const AUTH_REFRESH_PATH = "/api/auth/refresh";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -24,6 +28,7 @@ export class ApiError extends Error {
 export async function request<T>(
   path: string,
   options: RequestOptions = {},
+  isRetry = false, // 재시도로 들어온 호출인지 표시
 ): Promise<T> {
   const { body, headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders);
@@ -50,6 +55,28 @@ export async function request<T>(
     throw new Error("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
   }
 
+  // 재시도가 아니고 refresh 요청 자체가 아닐 때만 시도
+  if (
+    response.status === 401 &&
+    !isRetry &&
+    path !== AUTH_REFRESH_PATH
+  ) {
+    try {
+      // refresh_token 쿠키로 새 access_token 쿠키를 받음
+      await request<unknown>(AUTH_REFRESH_PATH, {method: "POST"}, true);
+    } catch {
+      // refresh도 실패 = 세션 만료 -> 프론트 상태 정리 후 원래 에러 전달
+      useAuthStore.getState().setUnauthenticated();
+      throw new ApiError(
+        "로그인이 필요해요. 먼저 로그인을 진행해주세요.",
+        "UNAUTHORIZED",
+        401,
+      );
+    }
+    // refresh 성공 -> 원래 요청을 딱 1번 재시도
+    return request<T>(path, options, true);
+  }
+  
   /**
    * 로그아웃 API는 204 No Content를 반환하므로
    * JSON 변환 없이 종료

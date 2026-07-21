@@ -202,7 +202,7 @@ function AvailabilityPage() {
 
   // 참여(쿠키) 안 했으면 등록 못 하니 참여 화면으로 보냄
   useEffect(() => {
-    if (!guest && user) {
+    if (!guest && !user) {
       navigate(`/invite/${inviteToken}/guest`, { replace: true });
     }
   }, [guest, user, inviteToken, navigate]);

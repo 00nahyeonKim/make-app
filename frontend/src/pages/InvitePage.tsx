@@ -13,6 +13,8 @@ import { getApiErrorMessage } from "../api/httpClient";
 import LoadingSpinner from "../components/LoadingSpinner";
 import type { AvailabilitiesStatus } from "../types/availability";
 import { getAvailabilities } from "../api/availabilityApi";
+import { useAuthStore } from "../stores/authStore";
+import { getMyParticipation } from "../api/participantApi";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const STEP = 30; // 한 칸 = 30분
@@ -149,6 +151,8 @@ function InvitePage() {
   const navigate = useNavigate();
   const created = useMeetingDraftStore((state) => state.created);
   const guest = useGuestStore((state) => state.guest);
+  const user = useAuthStore((s) => s.user);
+  const joined = user !== null || guest !== null; // 이 브라우저에서 이미 참여했는지
 
   const [meeting, setMeeting] = useState<MeetingDetail | null>(null);
   const [avail, setAvail] = useState<AvailabilitiesStatus | null>(null);
@@ -158,6 +162,15 @@ function InvitePage() {
   // 방금 내가 만든 모임이면(=create 토큰과 같으면) 공유 모달을 자동으로 띄움
   const justCreated = created?.inviteToken === inviteToken;
   const [shareOpen, setShareOpen] = useState(justCreated);
+
+  // 내(게스트)가 이미 가능 시간을 등록했는지 = 실시간 현황에 내 id가 있는지
+  const [hasRegistered, setHasRegistered] = useState(false);
+  useEffect(() => {
+    if (!inviteToken || !joined) return;
+    getMyParticipation(inviteToken)
+      .then((me) => setHasRegistered(me.submittedAt !== null))
+      .catch(() => setHasRegistered(false)); // 미참여/게스트 미등록 -> +
+  }, [inviteToken, joined]);
 
   // 모임 정보 조회 (리더/팔로워 공통)
   useEffect(() => {
@@ -198,7 +211,6 @@ function InvitePage() {
   }
 
   const inviteUrl = buildInviteUrl(inviteToken);
-  const joined = guest !== null; // 이 브라우저에서 이미 참여했는지
 
   // 응답(등록)한 참여자 목록: 슬롯들의 가능/불가 명단을 합쳐 id로 중복 제거
   const participants = avail
@@ -213,10 +225,6 @@ function InvitePage() {
         ),
       )
     : [];
-
-  // 내(게스트)가 이미 가능 시간을 등록했는지 = 실시간 현황에 내 id가 있는지
-  const hasRegistered =
-    guest !== null && participants.some(([id]) => id === guest.id);
 
   return (
     // relative: ShareModal의 absolute inset-0가 이 영역을 기준으로 덮게 함

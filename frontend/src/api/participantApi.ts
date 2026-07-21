@@ -32,3 +32,13 @@ export function submitMyParticipation(
     { method: "POST" }, // body 없음
   );
 }
+
+export function getMyParticipation(inviteToken: string) {
+  return request<{
+    id: number;
+    displayName: string;
+    type: string;
+    submittedAt: string | null;
+    availabilities: unknown[];
+  }>(`/api/meetings/${inviteToken}/participants/me`, { method: "GET" });
+}
