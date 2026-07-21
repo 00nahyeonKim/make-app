@@ -16,7 +16,10 @@ import { useGuestStore } from "../stores/guestStore";
 import { useAuthStore } from "../stores/authStore";
 import type { AvailabilityInput } from "../types/availability";
 import { submitAvailabilities } from "../api/availabilityApi";
-import { submitMyParticipation } from "../api/participantApi";
+import {
+  getMyParticipation,
+  submitMyParticipation,
+} from "../api/participantApi";
 
 // 요일 라벨 - getDay()는 0=일 ~ 6=토 를 돌려줌
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -70,7 +73,11 @@ function buildAvailabilites(
   return slots.map((slot): AvailabilityInput => {
     const picked = pickedBySlot.get(slot.id) ?? [];
     if (picked.length === 0) {
-      return { candidateSlotId: slot.id, status: "UNAVAILABLE", timeRanges: [] };
+      return {
+        candidateSlotId: slot.id,
+        status: "UNAVAILABLE",
+        timeRanges: [],
+      };
     }
     // 고른 30분 칸들의 최소 시작 ~ (최대 시작 + 30분)을 가용 범위로
     const slotEnd = toMinutes(slot.endTime); // 이 슬롯의 종료(분)
@@ -199,6 +206,33 @@ function AvailabilityPage() {
       )
       .finally(() => setLoading(false));
   }, [inviteToken]);
+
+  // 수정 버튼 클릭 시 초기값은 기존 선택 슬롯
+  useEffect(() => {
+    if (!inviteToken || slots.length === 0) return;
+    getMyParticipation(inviteToken)
+      .then((me) => {
+        const next = new Set<string>();
+        const columns = buildDayColumns(slots);
+        for (const a of me.availabilities as AvailabilityInput[]) {
+          if (a.status !== "AVAILABLE") continue;
+          for (const col of columns) {
+            if (col.slotId !== a.candidateSlotId) continue;
+            for (const r of a.timeRanges) {
+              for (
+                let m = toMinutes(r.startTime);
+                m < toMinutes(r.endTime);
+                m += STEP
+              ) {
+                next.add(cellKey(col.slotId, col.date, m));
+              }
+            }
+          }
+        }
+        setSelectedCells(next);
+      })
+      .catch(() => {}); // 미등록(신규 +)이면 빈 상태 그대로
+  }, [inviteToken, slots]);
 
   // 참여(쿠키) 안 했으면 등록 못 하니 참여 화면으로 보냄
   useEffect(() => {

@@ -3,7 +3,7 @@ import { useGuestStore } from "../stores/guestStore";
 import { useState, type ChangeEvent, type SyntheticEvent } from "react";
 import { ApiError, getApiErrorMessage } from "../api/httpClient";
 import { loginGuest, registerGuest } from "../api/authApi";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 import Header from "../layouts/Header";
 import kakaoLoginButtonImage from "../assets/kakao-login-button.png";
 import Button from "../components/Button";
@@ -21,6 +21,7 @@ function GuestJoinPage() {
 
   const [displayName, setDisplayName] = useState("");
   const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -182,13 +183,25 @@ function GuestJoinPage() {
             placeholder="이름을 입력하세요"
             className="h-12 rounded-lg border border-[#cfcfcf] px-4 text-ms outline-none focus:border-[#f59a58]"
           />
-          <input
-            value={pin}
-            onChange={handlePinChange}
-            inputMode="numeric"
-            placeholder="PIN 숫자 4자리"
-            className="h-12 rounded-lg border border-[#cfcfcf] px-4 text-ms tracking-[0.3em] placeholder:tracking-normal outline-none focus:border-[#f59a58]"
-          />
+          <div className="relative w-full">
+            <input
+              value={pin}
+              onChange={handlePinChange}
+              inputMode="numeric"
+              type={showPin ? "text" : "password"}
+              placeholder="PIN 숫자 4자리"
+              className="h-12 w-full rounded-lg border border-[#cfcfcf] px-4 pr-11 text-ms tracking-[0.3em] placeholder:tracking-normal outline-none focus:border-[#f59a58]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPin((v) => !v)}
+              aria-label={showPin ? "PIN 숨기기" : "PIN 보기"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9b9b9b]"
+            >
+              {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+
           {error && (
             <p className="text-xs font-semibold text-[#fc3a3a]">{error}</p>
           )}
