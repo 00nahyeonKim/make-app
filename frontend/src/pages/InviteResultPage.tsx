@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { ResultResponse } from "../types/result";
+import type { ResultResponse, ResultSort } from "../types/result";
 import type { AvailabilitiesStatus } from "../types/availability";
 import { getResults } from "../api/resultApi";
 import { getApiErrorMessage } from "../api/httpClient";
@@ -11,6 +11,13 @@ import { ChevronDown, Home } from "lucide-react";
 import Button from "../components/Button";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 정렬 탭 (서버가 원하는 값 key + 사용자에게 보일 laebl)
+const SORT_TABS: { key: ResultSort; label: string }[] = [
+  { key: "recommend", label: "추천순" },
+  { key: "date", label: "날짜순" },
+  { key: "duration", label: "긴 시간순" },
+];
 
 // "2026-05-27" -> "05월 27일 (수)"
 function formatResultDate(dateStr: string): string {
@@ -26,6 +33,7 @@ function InviteResultPage() {
   const [result, setResult] = useState<ResultResponse | null>(null);
   const [avail, setAvail] = useState<AvailabilitiesStatus | null>(null); // 이름용
   const [expanded, setExpanded] = useState<Set<number>>(new Set()); // 펼쳐진 카드 id들
+  const [sort, setSort] = useState<ResultSort>("recommend");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -33,14 +41,14 @@ function InviteResultPage() {
   useEffect(() => {
     if (!inviteToken) return;
     setLoading(true);
-    getResults(inviteToken)
+    getResults(inviteToken, sort)
       .then((data) => {
         setResult(data);
         setExpanded(new Set(data.slots.map((s) => s.id))); // 처음엔 다 펼쳐 둠
       })
       .catch((e) => setError(getApiErrorMessage(e, "결과를 불러올 수 없어요.")))
       .finally(() => setLoading(false));
-  }, [inviteToken]);
+  }, [inviteToken, sort]);
 
   // ② 참여자 이름 (results엔 없어서 availabilities에서 가져옴)
   useEffect(() => {
@@ -103,15 +111,24 @@ function InviteResultPage() {
 
         {/* 정렬 드롭다운 */}
         <div className="mt-4 flex gap-2">
-          {["전체 참여자", "빠른 시간 순"].map((label) => (
-            <span
-              key={label}
-              className="inline-flex items-center gap-1 rounded-full bg-[#f4f4f4] px-3 py-1.5 text-[12px] font-semibold text-[#777777]"
-            >
-              {label}
-              <ChevronDown size={14} />
-            </span>
-          ))}
+          {SORT_TABS.map((tab) => {
+            const active = sort === tab.key; // 지금 선택된 탭인가?
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setSort(tab.key)} // 누르면 정렬 값 변경 -> useEffect 재실행
+                className={[
+                  "rounded-full px-3 py-1.5 text-[12px] font-semibold transition",
+                  active
+                    ? "bg-[#f59a58] text-white" // 선택됨: 주황색 강조
+                    : "bg-[#f4f4f4] text-[#777777] hover:bg-[#ececec]", // 선택안됨: 회색
+                ].join(" ")}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* 결과 카드들 */}
@@ -219,7 +236,7 @@ function InviteResultPage() {
               alert("결과 공유는 5일차에 연결해요");
             }}
           >
-            결과 공유하기
+            약속 확정하기
           </Button>
         </div>
       </div>

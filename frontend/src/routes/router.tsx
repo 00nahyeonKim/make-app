@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router";
 import BasicLayout from "../layouts/BasicLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ProtectedRoute from "./ProtectedRoute";
+import ResultSharePage from "../pages/ResultSharePage";
 
 const MainPage = lazy(() => import("../pages/MainPage"));
 const LoginPage = lazy(() => import("../pages/LoginPage"));
@@ -80,6 +81,10 @@ const router = createBrowserRouter([
       {
         path: "invite/:inviteToken/result",
         element: withLoading(<InviteResultPage />, "결과를 준비하는 중이에요"),
+      },
+      {
+        path: "result/:resultToken",
+        element: withLoading(<ResultSharePage />, "결과를 준비하는 중이에요"),
       },
       {
         path: "*",
