@@ -67,12 +67,18 @@ public class MeetingService {
         return new MeetingCreateResponse(meeting, FRONT_BASE_URL);
     }
 
+    // viewerUserId: 로그인한 회원이면 userId, 비로그인/게스트면 null
     // 초대 토큰으로 모임 + 후보 슬롯 조회 (읽기 전용 트랜잭션)
     @Transactional(readOnly = true)
-    public MeetingDetailResponse findByInviteToken(String inviteToken) {
+    public MeetingDetailResponse findByInviteToken(String inviteToken, Long viewerUserId) {
         Meeting meeting = meetingRepository.findByInviteToken(inviteToken)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEETING_NOT_FOUND));
-        return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting));
+
+        // 로그인했고, 그 사람이 이 모임의 주최자면 true
+        boolean isOwner = viewerUserId != null
+                && meeting.getOwner().getId().equals(viewerUserId);
+
+        return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting), isOwner);
     }
 
     // 결과 토큰으로 조회 (토직은 위와 동일, 토큰 종류만 다름)
@@ -91,7 +97,9 @@ public class MeetingService {
         CandidateSlot slot = candidateSlotRepository.findById(confirmedSlotId)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_SLOT));
         meeting.confirm(slot);
-        return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting)); // 확정 결과 반환
+        // 주최자 확인이 끝났으므로 결과 토큰까지 내려준다(확정 후 이동할 주소)
+        return new MeetingDetailResponse(meeting, candidateSlotRepository.findByMeeting(meeting),
+                true, meeting.getResultToken()); // 확정 결과 반환
     }
 
     // 모임 만료 - 주최자만 가능, 확정된 모임은 만료 불가

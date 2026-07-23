@@ -39,17 +39,30 @@ public class MeetingController {
     }
 
     private Long getLoginUserId(Authentication auth) {
-        if (auth == null || !auth.isAuthenticated()) {
+        Long userId = getLoginUserIdOrNull(auth); // 게스트/비로그인은 null
+        if (userId == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
-        return (Long) auth.getPrincipal(); // getPrincipal()의 반환 타입은 Object라 Long으로 강제 형변환 필요 - JWT 필터에서 principal에 userId를 넣어 둠
+        return userId; // JWT 필터에서 principal에 userId를 넣어 둠
     }
 
     @GetMapping("/invite/{inviteToken}")
     public ResponseEntity<ApiResponse<MeetingDetailResponse>> findByInviteToken(
-        @PathVariable String inviteToken) {
-            return ResponseEntity.ok(ApiResponse.ok(meetingService.findByInviteToken(inviteToken)));
+        @PathVariable String inviteToken,
+        Authentication auth) { // 비로그인이면 null로 들어온다 (선택적 인증)
+            return ResponseEntity.ok(ApiResponse.ok(
+                meetingService.findByInviteToken(inviteToken, getLoginUserIdOrNull(auth))));
         }
+
+    // 로그인한 "회원"의 id, 비로그인이거나 게스트면 null
+    private Long getLoginUserIdOrNull(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        boolean isGuest = auth.getAuthorities().stream()
+            .anyMatch(a -> "ROLE_GUEST".equals(a.getAuthority()));
+        return isGuest ? null : (Long) auth.getPrincipal();
+    }
 
     @GetMapping("/result/{resultToken}")
     public ResponseEntity<ApiResponse<MeetingDetailResponse>> findByResultToken(
