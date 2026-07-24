@@ -108,7 +108,9 @@ function InviteResultPage() {
 
       // 방장에게만 오는 결과 토큰 = 이동할 주소
       if (!detail.resultToken) {
-        setConfirmError("결과 링크를 받지 못했어요. 잠시 후 다시 시도해주세요.");
+        setConfirmError(
+          "결과 링크를 받지 못했어요. 잠시 후 다시 시도해주세요.",
+        );
         return;
       }
 
@@ -123,7 +125,7 @@ function InviteResultPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !result) {
     return <LoadingSpinner fullScreen message="결과를 불러오는 중이에요" />;
   }
   if (error || !result || !inviteToken) {
@@ -192,40 +194,47 @@ function InviteResultPage() {
 
         {/* 결과 카드들 */}
         <div className="mt-4 flex flex-col gap-3">
-          {result.slots.map((slot) => {
-            const open = expanded.has(slot.id);
-            const names = nameMap.get(slot.id);
-            const selected = selectedSlotId === slot.id; // 방장이 고른 카드인가?
-            return (
-              <div
-                key={slot.id}
-                className={[
-                  "rounded-xl border p-4 transition",
-                  selected
-                    ? "border-[#f59a58] bg-[#fff7f0] ring-2 ring-[#f59a58]" // 선택됨: 테두리 두 겹
-                    : slot.isTopRecommendation
-                      ? "border-[#f59a58] bg-[#fff7f0]" // 추천 상위 강조
-                      : "border-[#eeeeee] bg-white",
-                ].join(" ")}
-              >
-                {/* 헤더 줄: (방장만) 선택 동그라미 + 날짜/시간(누르면 펼치기/접기) */}
-                <div className="flex w-full items-center gap-2">
-                  {isOwner && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSlotId(slot.id)} // 이 카드를 확정 후보로 선택
-                      aria-label="이 시간으로 확정하기"
-                      aria-pressed={selected}
-                      className={[
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition",
-                        selected
-                          ? "border-[#f59a58] bg-[#f59a58] text-white" // 선택됨 : 체크 표시
-                          : "border-[#d9d9d9] bg-white text-transparent", // 안 선택됨: 빈 동그라미
-                      ].join(" ")}
-                    >
-                      <Check size={12} />
-                    </button>
-                  )}
+          {loading ? (
+            <LoadingSpinner message="정렬하는 중이에요" />
+          ) : (
+            result.slots.map((slot) => {
+              const open = expanded.has(slot.id);
+              const names = nameMap.get(slot.id);
+              const selected = selectedSlotId === slot.id; // 방장이 고른 카드인가?
+              return (
+                <div
+                  key={slot.id}
+                  className={[
+                    "rounded-xl border p-4 transition",
+                    selected
+                      ? "border-[#f59a58] bg-[#fff7f0] ring-2 ring-[#f59a58]" // 선택됨: 테두리 두 겹
+                      : slot.isTopRecommendation
+                        ? "border-[#f59a58] bg-[#fff7f0]" // 추천 상위 강조
+                        : "border-[#eeeeee] bg-white",
+                  ].join(" ")}
+                >
+                  {/* 헤더 줄: (방장만) 선택 동그라미 + 날짜/시간(누르면 펼치기/접기) */}
+                  <div className="flex w-full items-center gap-2">
+                    {isOwner && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedSlotId((prev) =>
+                            prev === slot.id ? null : slot.id,
+                          )
+                        } // 이 카드를 확정 후보로 선택 - 이미 선택된 카드면 해제, 아니면 선택
+                        aria-label="이 시간으로 확정하기"
+                        aria-pressed={selected}
+                        className={[
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition",
+                          selected
+                            ? "border-[#f59a58] bg-[#f59a58] text-white" // 선택됨 : 체크 표시
+                            : "border-[#d9d9d9] bg-white text-transparent", // 안 선택됨: 빈 동그라미
+                        ].join(" ")}
+                      >
+                        <Check size={12} />
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -241,74 +250,76 @@ function InviteResultPage() {
                         className={`shrink-0 text-[#9b9b9b] transition ${open ? "rotate-180" : ""}`}
                       />
                     </button>
+                  </div>
+
+                  {/* 가능 라벨 (항상 표시) */}
+                  <p className="mt-3 text-[13px] font-bold text-[#e07b34]">
+                    {slot.recommendationLabel}
+                  </p>
+
+                  {/* 상세 (펼쳤을 때만) */}
+                  {open && (
+                    <>
+                      {names && names.available.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {names.available.map((n) => (
+                            <span
+                              key={n}
+                              className="rounded-full bg-[#ffe6d2] px-2.5 py-1 text-[12px] font-semibold text-[#e07b34]"
+                            >
+                              {n}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="mt-3 text-[13px] font-bold text-[#9b9b9b]">
+                        {result.totalParticipants}명 중 {slot.unavailableCount}
+                        명 불가능
+                      </p>
+                      {names && names.unavailable.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {names.unavailable.map((n) => (
+                            <span
+                              key={n}
+                              className="rounded-full bg-[#f4f4f4] px-2.5 py-1 text-[12px] font-semibold text-[#9b9b9b]"
+                            >
+                              {n}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-                
-
-                {/* 가능 라벨 (항상 표시) */}
-                <p className="mt-3 text-[13px] font-bold text-[#e07b34]">
-                  {slot.recommendationLabel}
-                </p>
-
-                {/* 상세 (펼쳤을 때만) */}
-                {open && (
-                  <>
-                    {names && names.available.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {names.available.map((n) => (
-                          <span
-                            key={n}
-                            className="rounded-full bg-[#ffe6d2] px-2.5 py-1 text-[12px] font-semibold text-[#e07b34]"
-                          >
-                            {n}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <p className="mt-3 text-[13px] font-bold text-[#9b9b9b]">
-                      {result.totalParticipants}명 중 {slot.unavailableCount}명
-                      불가능
-                    </p>
-                    {names && names.unavailable.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {names.unavailable.map((n) => (
-                          <span
-                            key={n}
-                            className="rounded-full bg-[#f4f4f4] px-2.5 py-1 text-[12px] font-semibold text-[#9b9b9b]"
-                          >
-                            {n}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
       {/* 하단 바 */}
-      <div className="shrink-0 border-t border-[#f0f0f0] px-6 pb-6 pt-4">
-        {/* 실시간 등록 현황(초대 화면)으로 */}
-        <button
-          type="button"
-          onClick={() => navigate(`/invite/${inviteToken}`)}
-          className="rounded-full bg-[#f4f4f4] px-3 py-1.5 text-[12px] font-semibold text-[#777777]"
-        >
-          실시간 일정 등록 현황
-        </button>
-
+      <div className="shrink-0 px-6 pb-6 pt-4">
         <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            aria-label="홈으로"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#f0dccb] text-[#f59a58]"
-          >
-            <Home size={22} />
-          </button>
+          <div className="relative">
+            {/* 말풍선 배지 */}
+            <span
+              className="absolute -top-8 left-1/8 -translate-x-1/8 whitespace-nowrap
+                        rounded-lg bg-[#f4f4f4] px-2.5 py-1 text-[11px] font-semibold text-[#777777]
+                        after:absolute after:left-1/4 after:top-full after:-translate-x-1/4
+                        after:border-4 after:border-transparent after:border-t-[#f4f4f4]"
+            >
+              실시간 등록 화면으로 이동
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate(`/invite/${inviteToken}`)}
+              aria-label="홈으로"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#f0dccb] text-[#f59a58]"
+            >
+              <Home size={22} />
+            </button>
+          </div>
           <Button
             type="button"
             variant="orange"
