@@ -57,6 +57,8 @@ export type MeetingDetail = {
   expectedCount: number | null;
   status: MeetingStatus;
   ownerName?: string; // 초대 조회에만 있음
+  isOwner?: boolean; // 로그인한 요청자가 이 모임의 방장이면 true
+  resultToken?: string; // 확정 응답 등 방장 확인이 끝난 응답에만 들어옴
   candidateSlots?: ServerSlot[];
   confirmedSlot?: ServerSlot; // 확정된 경우에만 있음
   createdAt?: string;

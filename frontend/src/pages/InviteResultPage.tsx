@@ -7,8 +7,9 @@ import { getApiErrorMessage } from "../api/httpClient";
 import { getAvailabilities } from "../api/availabilityApi";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Header from "../layouts/Header";
-import { ChevronDown, Home } from "lucide-react";
+import { Check, ChevronDown, Home } from "lucide-react";
 import Button from "../components/Button";
+import { confirmMeeting, getMeetingByInviteToken } from "../api/meetingApi";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -37,6 +38,11 @@ function InviteResultPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [isOwner, setIsOwner] = useState(false); // 서버가 알려준 방장 여부
+  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null); // 방장이 고른 카드
+  const [confirming, setConfirming] = useState(false); // 확정 요청 중(버튼 잠금)
+  const [confirmError, setConfirmError] = useState(""); // 확정 실패 메시지
+
   // ① 집계 결과 (인원 수, 추천 라벨, 정렬)
   useEffect(() => {
     if (!inviteToken) return;
@@ -56,6 +62,14 @@ function InviteResultPage() {
     getAvailabilities(inviteToken)
       .then(setAvail)
       .catch(() => setAvail(null)); // 이름은 없어도 화면은 떠야 하니 조용히
+  }, [inviteToken]);
+
+  // ③ 내가 이 모임의 방장인지 (로그인 쿠키가 자동으로 실려 가서 서버가 판단해 줌)
+  useEffect(() => {
+    if (!inviteToken) return;
+    getMeetingByInviteToken(inviteToken)
+      .then((meeting) => setIsOwner(meeting.isOwner === true))
+      .catch(() => setIsOwner(false)); // 실패하면 안전하게 "참여자"로 취급
   }, [inviteToken]);
 
   // 슬롯 id -> {가능 이름들, 불가능 이름들} (getAvailabilities에서 뽑음)
@@ -78,6 +92,35 @@ function InviteResultPage() {
       else next.add(id);
       return next;
     });
+  };
+
+  // 방장: 선택한 슬롯으로 약속 확정 -> 결과 공유 화면으로 이동
+  const handleConfirm = async () => {
+    // 아직 결과를 못 받았거나, 아무 카드도 안 골랐으면 아무 일도 안 함
+    if (!result || selectedSlotId === null) return;
+
+    setConfirming(true);
+    setConfirmError("");
+
+    try {
+      // 확정 API 호출 (서버가 주최자인지 다시 검사)
+      const detail = await confirmMeeting(result.meetingId, selectedSlotId);
+
+      // 방장에게만 오는 결과 토큰 = 이동할 주소
+      if (!detail.resultToken) {
+        setConfirmError("결과 링크를 받지 못했어요. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
+      // 확정된 일정을 state에 담아 결과 공유 화면으로 이동
+      navigate(`/result/${detail.resultToken}`, {
+        state: { confirmedSlot: detail.confirmedSlot ?? null },
+      });
+    } catch (e) {
+      setConfirmError(getApiErrorMessage(e, "약속 확정에 실패했어요."));
+    } finally {
+      setConfirming(false);
+    }
   };
 
   if (loading) {
@@ -109,6 +152,22 @@ function InviteResultPage() {
           약속 조율 결과예요
         </h1>
 
+        {/* 역할별 안내 문구 */}
+        <p className="mt-3 text-[14px] font-semibold text-[#9b9b9b]">
+          {isOwner
+            ? selectedSlotId === null
+              ? "확정할 시간을 선택해주세요"
+              : "선택한 시간으로 약속을 확정할 수 있어요"
+            : "방장이 약속을 확정하면 결과 화면에서 볼 수 있어요"}
+        </p>
+
+        {/* 확정 실패 메시지 */}
+        {confirmError && (
+          <p className="mt-1 text-[12px] font-semibold text-[#e05b5b]">
+            {confirmError}
+          </p>
+        )}
+
         {/* 정렬 드롭다운 */}
         <div className="mt-4 flex gap-2">
           {SORT_TABS.map((tab) => {
@@ -136,31 +195,54 @@ function InviteResultPage() {
           {result.slots.map((slot) => {
             const open = expanded.has(slot.id);
             const names = nameMap.get(slot.id);
+            const selected = selectedSlotId === slot.id; // 방장이 고른 카드인가?
             return (
               <div
                 key={slot.id}
                 className={[
                   "rounded-xl border p-4 transition",
-                  slot.isTopRecommendation
-                    ? "border-[#f59a58] bg-[#fff7f0]" // 추천 상위 강조
-                    : "border-[#eeeeee] bg-white",
+                  selected
+                    ? "border-[#f59a58] bg-[#fff7f0] ring-2 ring-[#f59a58]" // 선택됨: 테두리 두 겹
+                    : slot.isTopRecommendation
+                      ? "border-[#f59a58] bg-[#fff7f0]" // 추천 상위 강조
+                      : "border-[#eeeeee] bg-white",
                 ].join(" ")}
               >
-                {/* 헤더(날짜/시간) - 누르면 펼치기/접기 */}
-                <button
-                  type="button"
-                  onClick={() => toggle(slot.id)}
-                  className="flex w-full items-center justify-between text-left"
-                >
-                  <span className="text-[15px] font-bold text-[#2d2d2d]">
-                    {formatResultDate(slot.startDate)} {slot.startTime} ~{" "}
-                    {slot.endTime}
-                  </span>
-                  <ChevronDown
-                    size={18}
-                    className={`shrink-0 text-[#9b9b9b] transition ${open ? "rotate-180" : ""}`}
-                  />
-                </button>
+                {/* 헤더 줄: (방장만) 선택 동그라미 + 날짜/시간(누르면 펼치기/접기) */}
+                <div className="flex w-full items-center gap-2">
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSlotId(slot.id)} // 이 카드를 확정 후보로 선택
+                      aria-label="이 시간으로 확정하기"
+                      aria-pressed={selected}
+                      className={[
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition",
+                        selected
+                          ? "border-[#f59a58] bg-[#f59a58] text-white" // 선택됨 : 체크 표시
+                          : "border-[#d9d9d9] bg-white text-transparent", // 안 선택됨: 빈 동그라미
+                      ].join(" ")}
+                    >
+                      <Check size={12} />
+                    </button>
+                  )}
+
+                    <button
+                      type="button"
+                      onClick={() => toggle(slot.id)}
+                      className="flex w-full items-center justify-between text-left"
+                    >
+                      <span className="text-[15px] font-bold text-[#2d2d2d]">
+                        {formatResultDate(slot.startDate)} {slot.startTime} ~{" "}
+                        {slot.endTime}
+                      </span>
+                      <ChevronDown
+                        size={18}
+                        className={`shrink-0 text-[#9b9b9b] transition ${open ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                </div>
+                
 
                 {/* 가능 라벨 (항상 표시) */}
                 <p className="mt-3 text-[13px] font-bold text-[#e07b34]">
@@ -231,12 +313,11 @@ function InviteResultPage() {
             type="button"
             variant="orange"
             fullWidth
-            onClick={() => {
-              // TODO: 결과 공유(ResultSharePage / 공유 모달) 연결
-              alert("결과 공유는 5일차에 연결해요");
-            }}
+            // 참여자면 항상 비활성 / 방장이어도 선택 전, 요청 중이면 비활성
+            disabled={!isOwner || selectedSlotId === null || confirming}
+            onClick={handleConfirm}
           >
-            약속 확정하기
+            {confirming ? "확정하는 중..." : "약속 확정하기"}
           </Button>
         </div>
       </div>

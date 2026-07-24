@@ -38,3 +38,21 @@ export function getMeetingByResultToken(
 ): Promise<MeetingDetail> {
   return request<MeetingDetail>(`/api/meetings/result/${resultToken}`);
 }
+
+/**
+ * 일정 확정 (방장만)
+ * POST /api/meetings/{meetingId}/confirm
+ * body: { confirmedSlotId }
+ *
+ * 로그인 쿠키가 필요하며, 서버가 "요청자 == 주최자"인지 다시 검사
+ * 응답에는 confirmedSlot과 resultToken(이동할 결과 주소)이 담겨옴
+ */
+export function confirmMeeting(
+  meetingId: number,
+  confirmedSlotId: number,
+): Promise<MeetingDetail> {
+  return request<MeetingDetail>(`/api/meetings/${meetingId}/confirm`, {
+    method: "POST",
+    body: { confirmedSlotId }, // request()가 JSON.stringify 해서 보냄
+  });
+}
