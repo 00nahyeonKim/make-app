@@ -47,7 +47,28 @@ function countAvailable(slot: StatusSlot, minutes: number): number {
   }).length;
 }
 
-function StatusGrid({ slots }: { slots: StatusSlot[] }) {
+// 이 칸(슬롯, 시작분)에 특정 참여자가 "가능"이라고 했는지
+function isAvailableFor(
+  slot: StatusSlot,
+  minutes: number,
+  participantId: number,
+): boolean {
+  const p = slot.availableParticipants.find((x) => x.id === participantId);
+  if (!p) return false; // 이 슬롯에서 불가능/미응답
+  return p.timeRanges.some((range) => {
+    const start = toMinutes(range.startTime);
+    const end = toMinutes(range.endTime);
+    return start <= minutes && minutes < end;
+  });
+}
+
+function StatusGrid({
+  slots,
+  selectedId,
+}: {
+  slots: StatusSlot[];
+  selectedId: number | null;
+}) {
   // 날짜 빠른 순 정렬 (같은 날이면 시작 시간 순)
   const columns = [...slots].sort((a, b) =>
     a.startDate === b.startDate
@@ -128,7 +149,23 @@ function StatusGrid({ slots }: { slots: StatusSlot[] }) {
                 );
               }
 
-              // 가능 인원이 많을수록 진한 주황 (0명이면 투명 = 흰색)
+              // 특정 참여자를 골랐으면: 그 사람이 가능한 칸만 진하게 채움
+              if (selectedId != null) {
+                const on = isAvailableFor(slot, m, selectedId);
+                return (
+                  <div
+                    key={m}
+                    className={`h-8 border-[#f3b682] ${borderClass}`}
+                    style={{
+                      backgroundColor: on
+                        ? "rgba(245, 154, 88, 0.85)"
+                        : "transparent",
+                    }}
+                  />
+                );
+              }
+
+              // 전체 보기: 가능 인원이 많을수록 진한 주황 (0명이면 투명 = 흰색)
               const count = countAvailable(slot, m);
               const alpha = count === 0 ? 0 : 0.12 + 0.45 * (count / maxCount);
               return (
@@ -156,6 +193,10 @@ function InvitePage() {
 
   const [meeting, setMeeting] = useState<MeetingDetail | null>(null);
   const [avail, setAvail] = useState<AvailabilitiesStatus | null>(null);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<
+    number | null
+  >(null); // 칩으로 고른 참여자 (null = 전체보기)
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -279,14 +320,29 @@ function InvitePage() {
         {/* 참여자 이름 칩 */}
         {participants.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {participants.map(([id, name]) => (
-              <span
-                key={id}
-                className="inline-block rounded-full bg-[#f4f4f4] px-3 py-1 text-[12px] font-semibold text-[#555555]"
-              >
-                {name}
-              </span>
-            ))}
+            {participants.map(([id, name]) => {
+              const active = selectedParticipantId === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() =>
+                    setSelectedParticipantId((prev) =>
+                      prev === id ? null : id,
+                    )
+                  } // 같은 칩 다시 누르면 전체 보기로 해제
+                  aria-pressed={active}
+                  className={[
+                    "rounded-full px-3 py-1 text-[12px] font-semibold transition",
+                    active
+                      ? "bg-[#f59a58] text-white"
+                      : "bg-[#f4f4f4] text-[#555555] hover:bg-[#ececec]",
+                  ].join(" ")}
+                >
+                  {name}
+                </button>
+              );
+            })}
           </div>
         ) : (
           <span className="mt-3 inline-block rounded-full bg-[#f4f4f4] px-3 py-1 text-[12px] font-semibold text-[#9b9b9b]">
@@ -295,21 +351,29 @@ function InvitePage() {
         )}
 
         {/* 실시간 등록 현황 */}
-        <h2 className="mt-7 text-[16px] font-bold text-[#2d2d2d]">
-          실시간 등록 현황
-        </h2>
+        <div className="mt-7 flex items-center gap-2">
+          <h2 className="text-[16px] font-bold text-[#2d2d2d]">
+            실시간 등록 현황
+          </h2>
+          {hasRegistered && (
+            <span className="rounded-md bg-[#fff3e9] px-2.5 py-1 text-[11px] font-semibold text-[#e07b34]">
+              이미 참여했어요!
+            </span>
+          )}
+        </div>
+
+        {selectedParticipantId !== null && (
+          <p className="mt-1 text-[13px] font-semibold text-[#e07b34]">
+            {participants.find(([id]) => id === selectedParticipantId)?.[1]}
+            님이 등록한 시간이에요
+          </p>
+        )}
         {avail && avail.slots.length > 0 ? (
-          <StatusGrid slots={avail.slots} />
+          <StatusGrid slots={avail.slots} selectedId={selectedParticipantId} />
         ) : (
           <div className="mt-3 flex h-48 flex-col items-center justify-center rounded-xl border border-dashed border-[#e0e0e0] text-center text-[13px] font-semibold text-[#c4c4c4]">
             참여자가 시간을 등록하면 여기에 표시돼요
           </div>
-        )}
-
-        {joined && (
-          <p className="mt-6 rounded-lg bg-[#fff3e9] px-4 py-3 text-[13px] font-semibold text-[#e07b34]">
-            이미 참여했어요! (가능 시간 등록은 4주차에서 이어집니다)
-          </p>
         )}
       </div>
 

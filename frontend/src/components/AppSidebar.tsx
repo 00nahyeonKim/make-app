@@ -1,10 +1,18 @@
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../stores/authStore";
 import { useEffect, useState } from "react";
-import { LogOut, X } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarPlus,
+  ChevronRight,
+  LogOut,
+  UserCog,
+  X,
+} from "lucide-react";
 import { logout } from "../api/authApi";
 import { getApiErrorMessage } from "../api/httpClient";
 import { useGuestStore } from "../stores/guestStore";
+import logo from "../assets/logo.png"; // 로고 이미지
 
 interface AppSidebarProps {
   isOpen: boolean;
@@ -16,7 +24,7 @@ function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
 
   const user = useAuthStore((state) => state.user);
   const guest = useGuestStore((state) => state.guest);
-  const displayName = guest?.displayName ?? user?.name ?? "사용자";
+  const displayName = guest?.displayName ?? user?.name ?? "비로그인";
   const setUnauthenticated = useAuthStore((state) => state.setUnauthenticated);
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -73,6 +81,12 @@ function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
     }
   };
 
+  // 메뉴 클릭: 사이드바 닫고 해당 경로로 이동
+  const go = (path: string) => {
+    onClose();
+    navigate(path);
+  };
+
   return (
     <div
       className={[
@@ -103,34 +117,74 @@ function AppSidebar({ isOpen, onClose }: AppSidebarProps) {
           isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
         ].join(" ")}
       >
-        <div className="flex h-14 items-center justify-between border-b border-[#eeeeee] px-5">
-          <h2
-            id="sidebar-title"
-            className="text-[17px] font-bold tracking-[-0.04em] text-[#222222]"
+        <div className="flex h-16 items-center justify-between border-b border-[#f0ece4] px-5">
+          <button
+            type="button"
+            onClick={() => go("/")}
+            aria-label="홈으로 이동"
+            className="flex items-center rounded-lg transition hover:opacity-90"
           >
-            메뉴
-          </h2>
+            <img
+              id="sidebar-title"
+              src={logo}
+              alt="픽타임"
+              className="h-10 w-auto"
+            />
+          </button>
 
           <button
             type="button"
             onClick={onClose}
             aria-label="사이드바 닫기"
-            className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-[#f5f5f5]"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#555555] transition hover:bg-[#f5f5f5]"
           >
             <X size={24} strokeWidth={2.2} />
           </button>
         </div>
 
         <div className="flex flex-1 flex-col px-5 py-6">
-          <div className="rounded-xl bg-[#f8f6f1] px-4 py-4">
-            <p className="text-[12px] font-medium text-[#999999]">
-              로그인한 사용자
-            </p>
-
-            <p className="mt-1 text-[17px] font-bold tracking-[-0.04em] text-[#222222]">
-              {displayName}님
-            </p>
+          {/* 프로필: displayName 강조 */}
+          <div className="flex items-center gap-3 rounded-2xl bg-linear-to-br from-[#fff3e9] to-[#fde3cf] px-4 py-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f59a58] text-[18px] font-bold text-white">
+              {displayName.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[17px] font-bold tracking-[-0.04em] text-[#2d2d2d]">
+                {displayName}님
+              </p>
+              <p className="text-[12px] font-semibold text-[#555555]">
+                오늘도 약속을 잡아볼까요?
+              </p>
+            </div>
           </div>
+
+          {/* 하위 메뉴 */}
+          <nav className="mt-6 flex flex-col gap-1">
+            {[
+              { label: "내 정보 수정", icon: UserCog, path: "/mypage/edit" },
+              {
+                label: "모임 생성하기",
+                icon: CalendarPlus,
+                path: "/meetings/new",
+              },
+              { label: "내 모임 보기", icon: CalendarDays, path: "/" },
+            ].map(({ label, icon: Icon, path }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => go(path)}
+                className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#f8f6f1]"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff3e9] text-[#f59a58]">
+                  <Icon size={18} strokeWidth={2.2} />
+                </span>
+                <span className="flex-1 text-[15px] font-semibold text-[#333333]">
+                  {label}
+                </span>
+                <ChevronRight size={18} className="text-[#c4c4c4]" />
+              </button>
+            ))}
+          </nav>
 
           {errorMessage && (
             <p className="mt-4 text-[13px] font-medium leading-5 text-[#e05a47]">

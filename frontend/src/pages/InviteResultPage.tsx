@@ -84,6 +84,9 @@ function InviteResultPage() {
     });
   });
 
+  // 이미 확정된 모임인지 (getResults가 status를 내려줌)
+  const isConfirmed = result?.status === "CONFIRMED";
+
   // 카드 펼치기/접기
   const toggle = (id: number) => {
     setExpanded((prev) => {
@@ -117,6 +120,7 @@ function InviteResultPage() {
       // 확정된 일정을 state에 담아 결과 공유 화면으로 이동
       navigate(`/result/${detail.resultToken}`, {
         state: { confirmedSlot: detail.confirmedSlot ?? null },
+        replace: true, // 확정 화면을 히스토리에서 대체 -> 뒤로가기 시 확정 화면으로 안 돌아옴
       });
     } catch (e) {
       setConfirmError(getApiErrorMessage(e, "약속 확정에 실패했어요."));
@@ -156,11 +160,13 @@ function InviteResultPage() {
 
         {/* 역할별 안내 문구 */}
         <p className="mt-3 text-[14px] font-semibold text-[#9b9b9b]">
-          {isOwner
-            ? selectedSlotId === null
-              ? "확정할 시간을 선택해주세요"
-              : "선택한 시간으로 약속을 확정할 수 있어요"
-            : "방장이 약속을 확정하면 결과 화면에서 볼 수 있어요"}
+          {isConfirmed
+            ? "이미 확정된 약속이에요"
+            : isOwner
+              ? selectedSlotId === null
+                ? "확정할 시간을 선택해주세요"
+                : "선택한 시간으로 약속을 확정할 수 있어요"
+              : "방장이 약속을 확정하면 결과 화면에서 볼 수 있어요"}
         </p>
 
         {/* 확정 실패 메시지 */}
@@ -215,7 +221,7 @@ function InviteResultPage() {
                 >
                   {/* 헤더 줄: (방장만) 선택 동그라미 + 날짜/시간(누르면 펼치기/접기) */}
                   <div className="flex w-full items-center gap-2">
-                    {isOwner && (
+                    {isOwner && !isConfirmed && (
                       <button
                         type="button"
                         onClick={() =>
@@ -325,10 +331,16 @@ function InviteResultPage() {
             variant="orange"
             fullWidth
             // 참여자면 항상 비활성 / 방장이어도 선택 전, 요청 중이면 비활성
-            disabled={!isOwner || selectedSlotId === null || confirming}
+            disabled={
+              !isOwner || isConfirmed || selectedSlotId === null || confirming
+            }
             onClick={handleConfirm}
           >
-            {confirming ? "확정하는 중..." : "약속 확정하기"}
+            {isConfirmed
+              ? "확정 완료된 약속이에요"
+              : confirming
+                ? "확정하는 중..."
+                : "약속 확정하기"}
           </Button>
         </div>
       </div>
