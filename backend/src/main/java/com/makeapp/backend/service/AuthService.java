@@ -53,19 +53,19 @@ public class AuthService {
         Map<String, Object> kakaoUser = getKakaoUserInfo(kakaoAccessToken);  // 2) 토큰으로 사용자 정보 받기
 
         String kakaoId = String.valueOf(kakaoUser.get("id"));        // 카카오 고유 ID
-        String name = extractNickname(kakaoUser);                    // 닉네임 추출
+        String kakaoNickname = extractNickname(kakaoUser);                    // 닉네임 추출
 
         // 3) 기존 회원이면 조회, 처음이면 가입(저장) → "있으면 로그인, 없으면 회원가입"
         User user = userRepository.findByKakaoId(kakaoId)
                 .orElseGet(() -> userRepository.save(
-                        User.builder().kakaoId(kakaoId).name(name).build()));
-        user.updateName(name);                                       // 카카오에서 바뀐 이름 반영
+                        User.builder().kakaoId(kakaoId).kakaoNickname(kakaoNickname).build()));
+        user.updateKakaoNickname(kakaoNickname);                                       // 카카오에서 바뀐 이름 반영
 
         // 4) 우리 서비스용 access/refresh JWT 발급해서 반환
         return new AuthResponse(
                 jwtProvider.createAccessToken(user.getId()),
                 jwtProvider.createRefreshToken(user.getId()),
-                new AuthResponse.UserInfo(user.getId(), user.getName()));
+                new AuthResponse.UserInfo(user.getId(), user.getDisplayName()));
     }
 
     // 인가 코드를 카카오 토큰 발급 API에 보내 access_token을 받아옴
