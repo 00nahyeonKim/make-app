@@ -54,7 +54,7 @@ public class ParticipantService {
 
         String displayName = (customDisplayName != null && !customDisplayName.isBlank())
                 ? customDisplayName
-                : user.getName();
+                : user.getDisplayName();
 
         if (participantRepository.findByMeetingAndDisplayName(meeting, displayName).isPresent()) {
                 throw new CustomException(ErrorCode.DISPLAY_NAME_TAKEN); // 이때 오류가 나면 프론트가 별도 모달창 표시

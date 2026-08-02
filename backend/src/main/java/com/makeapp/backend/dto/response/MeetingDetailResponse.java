@@ -49,7 +49,7 @@ public class MeetingDetailResponse {             // 공개 조회용 → 토큰 
         this.name = meeting.getName();
         this.expectedCount = meeting.getExpectedCount();
         this.status = meeting.getStatus().name();          // enum → 문자열
-        this.ownerName = meeting.getOwner().getName();     // owner(User)에서 닉네임만 꺼냄
+        this.ownerName = meeting.getOwner().getDisplayName(); // 서비스 닉네임을 우선 사용하고, 없으면 카카오 닉네임 사용
         this.isOwner = isOwner;
         this.resultToken = resultToken;
         this.candidateSlots = slots.stream().map(SlotInfo::from).toList();      // 슬롯 엔티티들 → SlotInfo들

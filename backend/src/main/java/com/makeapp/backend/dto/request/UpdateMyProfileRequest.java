@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor // 기본 생성자 자동 생성
 public class UpdateMyProfileRequest {
 
-    @NotBlank(message = "닉네임을 입력해주세요")
-    @Size(min = 2, max = 50, message = "닉네임은 2자 이상 20자 이하로 입력해주세요")
+    @NotBlank(message = "닉네임을 입력해 주세요.")
+    @Size(min = 2, max = 50, message = "닉네임은 2자 이상 50자 이하로 입력해 주세요.")
     private String nickname;
 }

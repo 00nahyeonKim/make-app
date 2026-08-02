@@ -52,7 +52,7 @@ public class MeetingService {
         participantRepository.save(Participant.builder()
                 .meeting(meeting)
                 .user(user)
-                .displayName(user.getName())
+                .displayName(user.getDisplayName())
                 .type(ParticipantType.LEADER)
                 .build());
 
